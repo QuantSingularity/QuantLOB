@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  # -----------------------------------------------------------
+  # Run synthetic simulation and export results
+  # -----------------------------------------------------------
+  quantlob-synthetic:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile
+      args:
+        BUILD_TYPE: Release
+    image: quantlob:latest
+    container_name: quantlob-synthetic
+    command:
+      - --symbol
+      - AAPL
+      - --events
+      - "500000"
+      - --mid
+      - "150.0"
+      - --tick
+      - "0.01"
+      - --out-dir
+      - /app/out
+      - --export-snapshot
+      - --export-trades
+    volumes:
+      - quantlob-out:/app/out
+
+  # -----------------------------------------------------------
+  # LOBSTER replay (mount your data dir via volume)
+  # -----------------------------------------------------------
+  quantlob-lobster:
+    image: quantlob:latest
+    container_name: quantlob-lobster
+    command:
+      - --lobster
+      - /app/data/messages.csv
+      - --symbol
+      - AAPL
+      - --out-dir
+      - /app/out
+      - --export-snapshot
+      - --export-trades
+    volumes:
+      - ./data:/app/data:ro
+      - quantlob-out:/app/out
+    profiles:
+      - lobster
+
+volumes:
+  quantlob-out:

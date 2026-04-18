@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            compiler: gcc
+            cc: gcc-12
+            cxx: g++-12
+            build_type: Release
+          - os: ubuntu-22.04
+            compiler: gcc
+            cc: gcc-12
+            cxx: g++-12
+            build_type: Debug
+          - os: ubuntu-22.04
+            compiler: clang
+            cc: clang-14
+            cxx: clang++-14
+            build_type: Release
+          - os: ubuntu-22.04
+            compiler: clang
+            cc: clang-14
+            cxx: clang++-14
+            build_type: Debug
+            extra_flags: >-
+              -DQUANTLOB_ENABLE_ASAN=ON
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ninja-build cmake ${{ matrix.cc }} ${{ matrix.cxx }}
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                -DQUANTLOB_BUILD_TESTS=ON \
+                -DQUANTLOB_BUILD_BENCHMARKS=ON \
+                -DQUANTLOB_BUILD_MAIN=ON \
+                ${{ matrix.extra_flags }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: cd build && ctest --output-on-failure --parallel 4
+
+      - name: Smoke-test main binary
+        run: ./build/quantlob --events 5000 --log-level WARN
+
+  sanitizer-check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: sudo apt-get install -y ninja-build cmake clang-14 clang++-14
+      - name: UBSan build + test
+        env:
+          CC: clang-14
+          CXX: clang++-14
+        run: |
+          cmake -B build_ubsan -G Ninja \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DQUANTLOB_BUILD_TESTS=ON \
+                -DQUANTLOB_BUILD_BENCHMARKS=OFF \
+                -DQUANTLOB_ENABLE_UBSAN=ON
+          cmake --build build_ubsan --parallel
+          cd build_ubsan && ctest --output-on-failure
