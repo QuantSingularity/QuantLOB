@@ -1,4 +1,6 @@
-# QuantLOB -- High-Performance Limit Order Book Simulator
+# QuantLOB
+
+## High-Performance Limit Order Book Simulator
 
 A C++20 limit order book (LOB) engine with price-time priority matching,
 LOBSTER data replay, synthetic feed generation, latency profiling, machine
