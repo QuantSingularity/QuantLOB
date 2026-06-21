@@ -1,0 +1,610 @@
+/* QuantLOB Terminal design system.
+ *
+ * A microstructure trading terminal: a cool deep-ink surface, a single cyan
+ * "signal" accent, and the universal bid-green / ask-red language for the order
+ * book. Numbers are monospaced with tabular figures so the depth ladder aligns
+ * like a real exchange front end. The depth ladder, with mirrored quantity
+ * bars, is the signature element.
+ */
+
+:root {
+  --ink-900: #080b11;
+  --ink-850: #0c1018;
+  --ink-800: #111722;
+  --ink-750: #161d2b;
+  --ink-700: #1c2434;
+  --line: #232c40;
+  --line-soft: #19202f;
+
+  --text: #e9edf5;
+  --text-dim: #98a2b8;
+  --text-faint: #5c6582;
+
+  --cyan: #35e0c9; /* signal accent */
+  --cyan-soft: #35e0c920;
+  --cyan-line: #35e0c955;
+  --bid: #2bd49a; /* buy side */
+  --bid-soft: #2bd49a1f;
+  --ask: #ff5d73; /* sell side */
+  --ask-soft: #ff5d731f;
+  --amber: #f4b14a;
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--ink-900);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  background-image:
+    radial-gradient(circle at 18% 12%, #10212455 0, transparent 38%),
+    radial-gradient(circle at 85% 80%, #19203a55 0, transparent 42%);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.mono,
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.bid {
+  color: var(--bid);
+}
+.ask {
+  color: var(--ask);
+}
+.dim {
+  color: var(--text-dim);
+}
+.faint {
+  color: var(--text-faint);
+}
+.cyan {
+  color: var(--cyan);
+}
+
+/* Shell --------------------------------------------------------------------*/
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  background: rgba(8, 11, 17, 0.82);
+}
+.statusbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 50px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.brand .logo {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.brand .logo .q {
+  color: var(--cyan);
+  text-shadow: 0 0 18px var(--cyan-soft);
+}
+.brand .logo .rest {
+  color: var(--text);
+}
+.brand .tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.status-items {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 7px;
+  background: var(--bid);
+  box-shadow: 0 0 8px var(--bid);
+}
+.status-dot.off {
+  background: var(--ask);
+  box-shadow: 0 0 8px var(--ask);
+}
+
+/* Sidebar ------------------------------------------------------------------*/
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: var(--ink-850);
+  padding: 16px 10px;
+}
+.nav-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 6px 10px 10px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 3px;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.nav-item:hover {
+  background: var(--ink-750);
+  color: var(--text);
+}
+.nav-item.active {
+  background: var(--ink-700);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--cyan);
+}
+.nav-item .glyph {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--cyan);
+  width: 16px;
+  text-align: center;
+}
+
+/* Workspace ----------------------------------------------------------------*/
+.workspace {
+  overflow-y: auto;
+  padding: 22px 26px 60px;
+}
+.panel-head {
+  margin-bottom: 18px;
+}
+.panel-head .eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 6px;
+}
+.panel-head h1 {
+  font-size: 22px;
+}
+.panel-head p {
+  margin: 5px 0 0;
+  color: var(--text-dim);
+  max-width: 70ch;
+}
+
+.card {
+  background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 18px;
+}
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+}
+.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.book-layout {
+  grid-template-columns: 1.1fr 0.9fr;
+}
+@media (max-width: 1180px) {
+  .cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .book-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    display: none;
+  }
+  .cols-2,
+  .cols-3,
+  .cols-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Metric -------------------------------------------------------------------*/
+.metric {
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 13px 15px;
+}
+.metric .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.metric .value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 21px;
+  margin-top: 6px;
+  letter-spacing: -0.01em;
+}
+.metric .sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Order book ladder --------------------------------------------------------*/
+.ladder {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+.ladder-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px 10px;
+}
+.ladder-row .px {
+  z-index: 1;
+}
+.ladder-row .qty {
+  z-index: 1;
+  text-align: right;
+  color: var(--text-dim);
+}
+.ladder-row .depth-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  opacity: 0.9;
+  border-radius: 2px;
+}
+.ladder-row.ask .px {
+  color: var(--ask);
+}
+.ladder-row.ask .depth-bar {
+  background: var(--ask-soft);
+}
+.ladder-row.bid .px {
+  color: var(--bid);
+}
+.ladder-row.bid .depth-bar {
+  background: var(--bid-soft);
+}
+.ladder-mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px;
+  margin: 4px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.ladder-mid .spread {
+  color: var(--cyan);
+}
+
+/* Tables -------------------------------------------------------------------*/
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+table.data th {
+  text-align: right;
+  font-weight: 500;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--ink-850);
+}
+table.data th:first-child,
+table.data td:first-child {
+  text-align: left;
+}
+table.data td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+table.data tbody tr:hover td {
+  background: var(--ink-800);
+}
+
+/* Forms --------------------------------------------------------------------*/
+label.field {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 7px;
+}
+select,
+input.inp {
+  width: 100%;
+  padding: 9px 11px;
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+}
+select:focus,
+input.inp:focus {
+  border-color: var(--cyan-line);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: 1px solid var(--cyan-line);
+  border-radius: var(--r-md);
+  background: var(--cyan-soft);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    transform 0.06s;
+}
+.btn:hover {
+  background: #35e0c933;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn.ghost {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--text-dim);
+}
+.btn.ghost:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+}
+.btn.buy {
+  border-color: var(--bid);
+  background: var(--bid-soft);
+  color: var(--bid);
+}
+.btn.buy:hover {
+  background: #2bd49a33;
+}
+.btn.sell {
+  border-color: var(--ask);
+  background: var(--ask-soft);
+  color: var(--ask);
+}
+.btn.sell:hover {
+  background: #ff5d7333;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 6px;
+}
+.toggle {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--ink-900);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.toggle.on {
+  border-color: var(--cyan-line);
+  color: var(--cyan);
+  background: var(--cyan-soft);
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.spacer {
+  flex: 1;
+}
+.mt-12 {
+  margin-top: 12px;
+}
+.mt-16 {
+  margin-top: 16px;
+}
+.mt-24 {
+  margin-top: 24px;
+}
+
+.toast {
+  padding: 10px 13px;
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid var(--line);
+  background: var(--ink-800);
+}
+.toast.ok {
+  border-color: #2bd49a55;
+  color: var(--bid);
+}
+.toast.err {
+  border-color: #ff5d7355;
+  color: var(--ask);
+}
+.toast.warn {
+  border-color: #f4b14a55;
+  color: var(--amber);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+}
+.pill.cyan {
+  color: var(--cyan);
+  border-color: var(--cyan-line);
+  background: var(--cyan-soft);
+}
+
+.gauge-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-700);
+  overflow: hidden;
+}
+.gauge-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+.loading {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.recharts-cartesian-axis-tick text {
+  fill: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.af-tooltip {
+  background: var(--ink-750);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 8px 11px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.af-tooltip .t-date {
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}

@@ -10,22 +10,24 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 
 enum class FeedType { LOBSTER_CSV, SYNTHETIC };
 
 struct FeedConfig {
     FeedType    type            = FeedType::SYNTHETIC;
-    std::string symbol          = "AAPL";
-    std::string message_file;   ///< LOBSTER message file path
-    std::string orderbook_file; ///< LOBSTER order-book file path (optional)
+    string symbol          = "AAPL";
+    string message_file;   ///< LOBSTER message file path
+    string orderbook_file; ///< LOBSTER order-book file path (optional)
     bool        replay_realtime = false;
     double      replay_speed    = 1.0; ///< >1.0 = faster than real-time
 };
 
 /// One decoded LOBSTER message-file row.
 struct LOBSTEREvent {
-    std::chrono::nanoseconds timestamp;
+    chrono::nanoseconds timestamp;
     int                      event_type; ///< 1=new, 2=partial-cancel, 3=delete, 4=exec, 5=hidden, 7=halt
     uint64_t                 order_id;
     uint64_t                 size;
@@ -46,8 +48,8 @@ struct SyntheticConfig {
     int      spread_ticks = 2;       ///< initial half-spread in ticks
 };
 
-using EventCallback = std::function<void(const LOBSTEREvent&)>;
-using OrderCallback = std::function<void(const Order&)>;
+using EventCallback = function<void(const LOBSTEREvent&)>;
+using OrderCallback = function<void(const Order&)>;
 
 class FeedHandler {
 public:
@@ -66,13 +68,13 @@ public:
 
     /// Parse a LOBSTER message CSV and return decoded events.
     /// Skips malformed lines with a WARN log entry; throws on file open error.
-    [[nodiscard]] std::vector<LOBSTEREvent> load_lobster_csv(
-        const std::filesystem::path& message_file);
+    [[nodiscard]] vector<LOBSTEREvent> load_lobster_csv(
+        const filesystem::path& message_file);
 
     /// Replay a decoded event sequence against the engine.
     /// Optionally sleeps between events if config_.replay_realtime is set.
-    void replay_lobster(const std::vector<LOBSTEREvent>& events,
-                        const std::string&               symbol);
+    void replay_lobster(const vector<LOBSTEREvent>& events,
+                        const string&               symbol);
 
     // ------------------------------------------------------------------
     // Synthetic generation
@@ -103,7 +105,7 @@ public:
 
 private:
     [[nodiscard]] Order build_order_from_event(const LOBSTEREvent& ev,
-                                               const std::string&  symbol) const;
+                                               const string&  symbol) const;
 
     MatchingEngine& engine_;
     FeedConfig      config_;

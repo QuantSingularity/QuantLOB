@@ -10,6 +10,8 @@
 
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
@@ -26,7 +28,7 @@ struct PipelineConfig {
 };
 
 struct PipelineResult {
-    std::vector<double> features;          ///< Raw FEATURE_DIM feature vector
+    vector<double> features;          ///< Raw FEATURE_DIM feature vector
     double              mid_price_forecast{0.0}; ///< Predicted mid-price delta
     double              buy_probability{0.5};    ///< P(next order is BUY)
     double              anomaly_score{0.0};

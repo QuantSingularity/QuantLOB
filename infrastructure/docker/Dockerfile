@@ -17,17 +17,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /src
 
-# Copy source tree
+# Copy source tree (tests and benchmarks live under code/ and are disabled here)
 COPY CMakeLists.txt .
 COPY code/         code/
-COPY tests/        tests/
-COPY benchmarks/   benchmarks/
 
 # Configure
 RUN cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
         -DQUANTLOB_BUILD_TESTS=OFF \
         -DQUANTLOB_BUILD_BENCHMARKS=OFF \
+        -DQUANTLOB_BUILD_SERVER=OFF \
         -DQUANTLOB_BUILD_MAIN=ON \
     && cmake --build build --parallel $(nproc)
 
@@ -45,7 +44,7 @@ USER quantlob
 WORKDIR /app
 
 COPY --from=builder /src/build/quantlob /app/quantlob
-COPY --chown=quantlob:quantlob data/ /app/data/
+COPY --chown=quantlob:quantlob code/data/ /app/data/
 
 RUN mkdir -p /app/out
 

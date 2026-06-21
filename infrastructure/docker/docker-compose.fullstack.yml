@@ -1,0 +1,8 @@
+services:
+  quantlob:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.fullstack
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

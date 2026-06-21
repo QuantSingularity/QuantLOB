@@ -10,20 +10,22 @@
 #include <unordered_map>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 
 /// Result returned by every submit_order() call.
 struct MatchResult {
-    std::vector<Trade> trades;
+    vector<Trade> trades;
     bool               resting;        ///< order (or partial remainder) rested on the book
     bool               fully_filled;   ///< aggressor was 100 % consumed
     bool               rejected;       ///< order was rejected (e.g. FOK unfilled)
-    std::string        reject_reason;
+    string        reject_reason;
 };
 
-using TradeCallback  = std::function<void(const Trade&)>;
-using RejectCallback = std::function<void(uint64_t order_id, const std::string& reason)>;
-using FillCallback   = std::function<void(uint64_t order_id, uint64_t fill_qty, double price)>;
+using TradeCallback  = function<void(const Trade&)>;
+using RejectCallback = function<void(uint64_t order_id, const string& reason)>;
+using FillCallback   = function<void(uint64_t order_id, uint64_t fill_qty, double price)>;
 
 /// Cumulative engine statistics (reset via reset_stats()).
 struct EngineStats {
@@ -52,21 +54,21 @@ public:
     /// Explicitly register a symbol before first use.  submit_order() will
     /// auto-register unknown symbols, but pre-registration avoids the extra
     /// map lookup on the hot path.
-    void register_symbol(const std::string& symbol);
+    void register_symbol(const string& symbol);
 
     /// Returns true if the symbol has a registered book.
-    [[nodiscard]] bool has_symbol(const std::string& symbol) const noexcept;
+    [[nodiscard]] bool has_symbol(const string& symbol) const noexcept;
 
     // ------------------------------------------------------------------
     // Order lifecycle
     // ------------------------------------------------------------------
 
     MatchResult submit_order(Order order);
-    bool        cancel_order(const std::string& symbol, uint64_t order_id);
+    bool        cancel_order(const string& symbol, uint64_t order_id);
 
     /// Modify the quantity of a resting order.
     /// new_quantity must exceed filled_quantity; otherwise returns false.
-    bool modify_order(const std::string& symbol,
+    bool modify_order(const string& symbol,
                       uint64_t           order_id,
                       uint64_t           new_quantity);
 
@@ -83,13 +85,13 @@ public:
     // ------------------------------------------------------------------
     // Inspection
     // ------------------------------------------------------------------
-    [[nodiscard]] const OrderBook*   get_book(const std::string& symbol) const noexcept;
+    [[nodiscard]] const OrderBook*   get_book(const string& symbol) const noexcept;
     [[nodiscard]] const EngineStats& stats() const noexcept { return stats_; }
 
     void reset_stats() noexcept;
 
     /// Reset a symbol's order book (e.g. start-of-day / session reset).
-    void reset_book(const std::string& symbol);
+    void reset_book(const string& symbol);
 
     /// Reset every registered book.
     void reset_all_books() noexcept;
@@ -105,14 +107,14 @@ private:
 
     /// Execute price-time priority crossing of aggressor against the opposing
     /// side of the book.  Returns all trades generated.
-    std::vector<Trade> cross(Order& aggressor, OrderBook& book);
+    vector<Trade> cross(Order& aggressor, OrderBook& book);
 
     Trade make_trade(uint64_t buy_id,
                      uint64_t sell_id,
                      double   price,
                      uint64_t qty) const noexcept;
 
-    std::unordered_map<std::string, OrderBook> books_;
+    unordered_map<string, OrderBook> books_;
     TradeCallback                              trade_cb_;
     RejectCallback                             reject_cb_;
     FillCallback                               fill_cb_;

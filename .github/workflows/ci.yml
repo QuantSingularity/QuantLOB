@@ -67,6 +67,22 @@ jobs:
       - name: Smoke-test main binary
         run: ./build/quantlob --events 5000 --log-level WARN
 
+      - name: Smoke-test REST server
+        run: |
+          ./build/quantlob_server 8123 /tmp/no_web &
+          SVR=$!
+          for i in $(seq 1 20); do
+            if curl -fsS "http://127.0.0.1:8123/api/health" >/dev/null 2>&1; then
+              echo "server healthy"; break
+            fi
+            sleep 0.5
+          done
+          curl -fsS "http://127.0.0.1:8123/api/health"
+          curl -fsS -X POST "http://127.0.0.1:8123/api/simulate" \
+            -H "Content-Type: application/json" \
+            -d '{"events":20000,"snap_interval":2000}' >/dev/null
+          kill "$SVR"
+
   sanitizer-check:
     runs-on: ubuntu-22.04
     steps:
@@ -85,3 +101,16 @@ jobs:
                 -DQUANTLOB_ENABLE_UBSAN=ON
           cmake --build build_ubsan --parallel
           cd build_ubsan && ctest --output-on-failure
+
+  frontend:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install and type-check + build
+        working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npm run build

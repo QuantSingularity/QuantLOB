@@ -1,0 +1,26 @@
+# Full-stack QuantLOB image: build the frontend, build the C++ server, then ship
+# a small runtime that serves both on one port.
+
+FROM node:20-slim AS web
+WORKDIR /web
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+FROM ubuntu:24.04 AS build
+RUN apt-get update && apt-get install -y g++ cmake make && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY CMakeLists.txt ./
+COPY code/ code/
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+      -DQUANTLOB_BUILD_TESTS=OFF -DQUANTLOB_BUILD_BENCHMARKS=OFF \
+ && cmake --build build -j --target quantlob_server
+
+FROM ubuntu:24.04 AS runtime
+RUN apt-get update && apt-get install -y libstdc++6 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /src/build/quantlob_server ./quantlob_server
+COPY --from=web /web/dist ./frontend/dist
+EXPOSE 8080
+CMD ["./quantlob_server", "8080", "/app/frontend/dist"]

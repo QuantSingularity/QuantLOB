@@ -37,7 +37,7 @@ def generate(
     output: Path,
 ) -> None:
     rng = random.Random(seed)
-    ts  = 34200.0  # 09:30:00 in seconds since midnight
+    ts = 34200.0  # 09:30:00 in seconds since midnight
     oid = 1
     active: dict[int, dict] = {}  # order_id -> {price_int, size, side}
 
@@ -50,34 +50,36 @@ def generate(
 
         if r < 0.60 or len(active) == 0:
             # New limit order
-            side   = 1 if rng.random() < 0.5 else -1
+            side = 1 if rng.random() < 0.5 else -1
             levels = rng.randint(0, 4)
             # FIX: use abs() to ensure offset is always positive, preventing
             # asks below the mid or bids above it.
             offset = levels * tick + abs(rng.gauss(0, tick * 0.1))
             # side=1 (buy)  → price = mid - offset  (below mid)
             # side=-1 (sell) → price = mid + offset  (above mid)
-            price     = mid - side * offset
-            price     = max(price, tick)
+            price = mid - side * offset
+            price = max(price, tick)
             price_int = round(price * 10000)
-            size      = rng.randint(1, 200)
+            size = rng.randint(1, 200)
             rows.append(f"{ts:.9f},{1},{oid},{size},{price_int},{side}")
             active[oid] = {"price_int": price_int, "size": size, "side": side}
             oid += 1
 
         elif r < 0.85 and active:
             # Full cancel (event type 3)
-            cid  = rng.choice(list(active.keys()))
+            cid = rng.choice(list(active.keys()))
             info = active.pop(cid)
             rows.append(
-                f"{ts:.9f},{3},{cid},{info['size']},{info['price_int']},{info['side']}")
+                f"{ts:.9f},{3},{cid},{info['size']},{info['price_int']},{info['side']}"
+            )
 
         elif active:
             # Visible execution (event type 4) — remove from active
-            cid  = rng.choice(list(active.keys()))
+            cid = rng.choice(list(active.keys()))
             info = active.pop(cid)
             rows.append(
-                f"{ts:.9f},{4},{cid},{info['size']},{info['price_int']},{info['side']}")
+                f"{ts:.9f},{4},{cid},{info['size']},{info['price_int']},{info['side']}"
+            )
             # Nudge mid toward execution price (price discovery)
             exec_price = info["price_int"] / 10000.0
             mid = mid + (exec_price - mid) * 0.01 + rng.gauss(0, tick * 0.5)
@@ -93,11 +95,11 @@ def generate(
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Generate sample LOBSTER CSV")
-    p.add_argument("--events", type=int,   default=10_000)
-    p.add_argument("--seed",   type=int,   default=42)
-    p.add_argument("--mid",    type=float, default=100.0)
-    p.add_argument("--tick",   type=float, default=0.01)
-    p.add_argument("--out",    type=Path,  default=Path("data/sample/messages.csv"))
+    p.add_argument("--events", type=int, default=10_000)
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--mid", type=float, default=100.0)
+    p.add_argument("--tick", type=float, default=0.01)
+    p.add_argument("--out", type=Path, default=Path("code/data/sample/messages.csv"))
     args = p.parse_args()
     generate(args.events, args.seed, args.mid, args.tick, args.out)
 

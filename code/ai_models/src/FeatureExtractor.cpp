@@ -4,6 +4,8 @@
 #include <cmath>
 #include <numeric>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
@@ -67,7 +69,7 @@ FeatureVector FeatureExtractor::extract(const BookSnapshot& snap) const {
                       ? mid_history_[mid_history_.size() - 2]
                       : mid;
     fv.data[2] = (mid > 0.0 && prev_mid > 0.0) ? (mid - prev_mid) / prev_mid : 0.0;
-    fv.data[3] = (prev_mid > 0.0 && mid > 0.0) ? std::log(mid / prev_mid) : 0.0;
+    fv.data[3] = (prev_mid > 0.0 && mid > 0.0) ? log(mid / prev_mid) : 0.0;
 
     // -------------------------------------------------------------------
     // Features 4-6: order-book imbalance at 1, 2, and 3 levels
@@ -127,7 +129,7 @@ FeatureVector FeatureExtractor::extract(const BookSnapshot& snap) const {
         double scale = static_cast<double>(trade_window_) * 1000.0;
         fv.data[12] = (scale > 0.0) ? flow / scale : 0.0;
         // Clamp to [-1, 1] as a safety net
-        fv.data[12] = std::max(-1.0, std::min(1.0, fv.data[12]));
+        fv.data[12] = max(-1.0, min(1.0, fv.data[12]));
     }
 
     // -------------------------------------------------------------------
@@ -142,27 +144,27 @@ FeatureVector FeatureExtractor::extract(const BookSnapshot& snap) const {
     if (mid_history_.size() >= 2) {
         double first = mid_history_.front();
         double last  = mid_history_.back();
-        fv.data[14] = (first > 0.0 && last > 0.0) ? std::log(last / first) : 0.0;
+        fv.data[14] = (first > 0.0 && last > 0.0) ? log(last / first) : 0.0;
     }
 
     // -------------------------------------------------------------------
     // Feature 15: rolling volatility (std of log-returns), already small
     // -------------------------------------------------------------------
     if (mid_history_.size() >= 3) {
-        std::vector<double> rets;
+        vector<double> rets;
         rets.reserve(mid_history_.size() - 1);
-        for (std::size_t i = 1; i < mid_history_.size(); ++i) {
+        for (size_t i = 1; i < mid_history_.size(); ++i) {
             double m0 = mid_history_[i - 1];
             double m1 = mid_history_[i];
             if (m0 > 0.0 && m1 > 0.0)
-                rets.push_back(std::log(m1 / m0));
+                rets.push_back(log(m1 / m0));
         }
         if (!rets.empty()) {
-            double mean = std::accumulate(rets.begin(), rets.end(), 0.0) /
+            double mean = accumulate(rets.begin(), rets.end(), 0.0) /
                           static_cast<double>(rets.size());
             double var = 0.0;
             for (double r : rets) var += (r - mean) * (r - mean);
-            fv.data[15] = std::sqrt(var / static_cast<double>(rets.size()));
+            fv.data[15] = sqrt(var / static_cast<double>(rets.size()));
         }
     }
 

@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <string>
 
+using namespace std;
+
 namespace lob {
 
 enum class Side      : uint8_t { BUY = 0, SELL = 1 };
@@ -22,7 +24,7 @@ struct Trade {
     uint64_t                 sell_order_id;
     double                   price;
     uint64_t                 quantity;
-    std::chrono::nanoseconds timestamp;
+    chrono::nanoseconds timestamp;
 };
 
 /// A resting or incoming order.
@@ -34,8 +36,8 @@ struct Order {
     double                   price;
     uint64_t                 quantity;
     uint64_t                 filled_quantity;
-    std::string              symbol;
-    std::chrono::nanoseconds timestamp;
+    string              symbol;
+    chrono::nanoseconds timestamp;
 
     Order() = default;
 
@@ -44,8 +46,8 @@ struct Order {
           OrderType                type_,
           double                   price_,
           uint64_t                 quantity_,
-          std::string              symbol_,
-          std::chrono::nanoseconds ts_)
+          string              symbol_,
+          chrono::nanoseconds ts_)
         : id(id_),
           side(side_),
           type(type_),
@@ -53,7 +55,7 @@ struct Order {
           price(price_),
           quantity(quantity_),
           filled_quantity(0),
-          symbol(std::move(symbol_)),
+          symbol(move(symbol_)),
           timestamp(ts_) {}
 
     [[nodiscard]] uint64_t remaining() const noexcept {
@@ -75,11 +77,11 @@ struct Order {
 };
 
 /// Human-readable string helpers (useful in logs / tests)
-inline const char* to_string(Side s) noexcept {
+inline const char* as_string(Side s) noexcept {
     return s == Side::BUY ? "BUY" : "SELL";
 }
 
-inline const char* to_string(OrderType t) noexcept {
+inline const char* as_string(OrderType t) noexcept {
     switch (t) {
         case OrderType::LIMIT:  return "LIMIT";
         case OrderType::MARKET: return "MARKET";
@@ -89,7 +91,7 @@ inline const char* to_string(OrderType t) noexcept {
     return "UNKNOWN";
 }
 
-inline const char* to_string(OrderStatus s) noexcept {
+inline const char* as_string(OrderStatus s) noexcept {
     switch (s) {
         case OrderStatus::ACTIVE:    return "ACTIVE";
         case OrderStatus::PARTIAL:   return "PARTIAL";

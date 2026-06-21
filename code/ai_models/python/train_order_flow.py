@@ -50,13 +50,13 @@ def load_snapshot_features(snap_path: str) -> pd.DataFrame:
     df = pd.read_csv(snap_path)
     bids = (
         df[df["side"] == "BID"]
-        .groupby("timestamp_ns")
+        .groupby("timestamp_ns")[["price", "quantity"]]
         .first()
         .rename(columns={"price": "bid_p1", "quantity": "bid_q1"})
     )
     asks = (
         df[df["side"] == "ASK"]
-        .groupby("timestamp_ns")
+        .groupby("timestamp_ns")[["price", "quantity"]]
         .first()
         .rename(columns={"price": "ask_p1", "quantity": "ask_q1"})
     )

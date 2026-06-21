@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
@@ -27,8 +29,8 @@ public:
     /// @param label  1.0 = was BUY, 0.0 = was SELL
     void update(const FeatureVector& fv, double label);
 
-    bool load_weights(const std::string& path);
-    bool save_weights(const std::string& path) const;
+    bool load_weights(const string& path);
+    bool save_weights(const string& path) const;
     void reset() noexcept;
 
     [[nodiscard]] uint64_t n_updates() const noexcept { return n_updates_; }
@@ -37,7 +39,7 @@ private:
     static double sigmoid(double x) noexcept;
 
     OrderFlowPredictorConfig cfg_;
-    std::vector<double>      weights_;
+    vector<double>      weights_;
     double                   bias_;
     uint64_t                 n_updates_;
 };

@@ -34,9 +34,9 @@ Thumbs.db
 *.gcda
 *.gcov
 
-data/sample/*.csv
-data/sample/*.txt
-!data/sample/.gitkeep
+code/data/sample/*.csv
+code/data/sample/*.txt
+!code/data/sample/.gitkeep
 
 compile_commands.json
 .cache/
@@ -46,3 +46,11 @@ out/
 
 # Docker
 .dockerignore
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Server binary + vendored build artifacts
+quantlob_server

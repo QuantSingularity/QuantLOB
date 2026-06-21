@@ -13,6 +13,7 @@ option(QUANTLOB_BUILD_TESTS      "Build unit tests"                   ON)
 option(QUANTLOB_BUILD_BENCHMARKS "Build benchmarks"                   ON)
 option(QUANTLOB_BUILD_MAIN       "Build main driver"                  ON)
 option(QUANTLOB_BUILD_AI_MODELS         "Build ML module"                    ON)
+option(QUANTLOB_BUILD_SERVER     "Build REST API server"              ON)
 option(QUANTLOB_ENABLE_ASAN      "Enable AddressSanitizer"            OFF)
 option(QUANTLOB_ENABLE_TSAN      "Enable ThreadSanitizer"             OFF)
 option(QUANTLOB_ENABLE_UBSAN     "Enable UndefinedBehaviorSanitizer"  OFF)
@@ -22,6 +23,8 @@ option(QUANTLOB_ENABLE_LTO       "Enable Link-Time Optimisation"      OFF)
 # Dependencies
 # ---------------------------------------------------------------------------
 include(FetchContent)
+
+find_package(Threads REQUIRED)
 
 FetchContent_Declare(
   Catch2
@@ -141,6 +144,29 @@ if(QUANTLOB_BUILD_MAIN)
   set_target_properties(quantlob_main PROPERTIES OUTPUT_NAME quantlob)
   if(QUANTLOB_ENABLE_LTO)
     set_property(TARGET quantlob_main PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# REST API server (integrates the engine + ML module with the web frontend)
+# ---------------------------------------------------------------------------
+if(QUANTLOB_BUILD_SERVER AND QUANTLOB_BUILD_AI_MODELS)
+  add_library(quantlob_thirdparty INTERFACE)
+  target_include_directories(quantlob_thirdparty INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/third_party/httplib
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/third_party)
+
+  add_executable(quantlob_server code/server/server_main.cpp)
+  target_include_directories(quantlob_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/code/server)
+  target_link_libraries(quantlob_server
+    PRIVATE quantlob_core quantlob_ml_core quantlob_thirdparty Threads::Threads)
+  # Optimise but stay portable: no -march=native here so the server binary runs
+  # on any host of the same architecture.
+  target_compile_options(quantlob_server PRIVATE
+    $<$<AND:$<CXX_COMPILER_ID:GNU,Clang>,$<CONFIG:Release>>:-O2>)
+  quantlob_apply_sanitizers(quantlob_server)
+  if(QUANTLOB_ENABLE_LTO)
+    set_property(TARGET quantlob_server PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
   endif()
 endif()
 

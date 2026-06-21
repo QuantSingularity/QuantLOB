@@ -5,6 +5,8 @@
 #include <sstream>
 #include <stdexcept>
 
+using namespace std;
+
 namespace lob {
 
 MatchingEngine::MatchingEngine() {
@@ -15,13 +17,13 @@ MatchingEngine::MatchingEngine() {
 // Symbol registration
 // ---------------------------------------------------------------------------
 
-void MatchingEngine::register_symbol(const std::string& symbol) {
+void MatchingEngine::register_symbol(const string& symbol) {
     auto [it, inserted] = books_.try_emplace(symbol, symbol);
     if (inserted)
         LOB_INFO("MatchingEngine", "Registered symbol: " + symbol);
 }
 
-bool MatchingEngine::has_symbol(const std::string& symbol) const noexcept {
+bool MatchingEngine::has_symbol(const string& symbol) const noexcept {
     return books_.find(symbol) != books_.end();
 }
 
@@ -72,7 +74,7 @@ MatchResult MatchingEngine::submit_order(Order order) {
     return result;
 }
 
-bool MatchingEngine::cancel_order(const std::string& symbol, uint64_t order_id) {
+bool MatchingEngine::cancel_order(const string& symbol, uint64_t order_id) {
     auto it = books_.find(symbol);
     if (it == books_.end()) return false;
     bool ok = it->second.cancel_order(order_id);
@@ -80,7 +82,7 @@ bool MatchingEngine::cancel_order(const std::string& symbol, uint64_t order_id) 
     return ok;
 }
 
-bool MatchingEngine::modify_order(const std::string& symbol,
+bool MatchingEngine::modify_order(const string& symbol,
                                   uint64_t           order_id,
                                   uint64_t           new_quantity) {
     auto it = books_.find(symbol);
@@ -93,22 +95,22 @@ bool MatchingEngine::modify_order(const std::string& symbol,
 // ---------------------------------------------------------------------------
 
 void MatchingEngine::set_trade_callback(TradeCallback cb) {
-    trade_cb_ = std::move(cb);
+    trade_cb_ = move(cb);
 }
 
 void MatchingEngine::set_reject_callback(RejectCallback cb) {
-    reject_cb_ = std::move(cb);
+    reject_cb_ = move(cb);
 }
 
 void MatchingEngine::set_fill_callback(FillCallback cb) {
-    fill_cb_ = std::move(cb);
+    fill_cb_ = move(cb);
 }
 
 // ---------------------------------------------------------------------------
 // Inspection
 // ---------------------------------------------------------------------------
 
-const OrderBook* MatchingEngine::get_book(const std::string& symbol) const noexcept {
+const OrderBook* MatchingEngine::get_book(const string& symbol) const noexcept {
     auto it = books_.find(symbol);
     if (it == books_.end()) return nullptr;
     return &it->second;
@@ -118,7 +120,7 @@ void MatchingEngine::reset_stats() noexcept {
     stats_ = {};
 }
 
-void MatchingEngine::reset_book(const std::string& symbol) {
+void MatchingEngine::reset_book(const string& symbol) {
     auto it = books_.find(symbol);
     if (it != books_.end()) {
         it->second.reset();
@@ -146,8 +148,8 @@ void MatchingEngine::reset_all_books() noexcept {
 //   • Level erasure     — happens only after order_ids is confirmed empty.
 // ---------------------------------------------------------------------------
 
-std::vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
-    std::vector<Trade> trades;
+vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
+    vector<Trade> trades;
 
     if (aggressor.side == Side::BUY) {
         auto& asks = book.asks();
@@ -173,7 +175,7 @@ std::vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
                 }
 
                 Order&   passive  = pit->second;
-                uint64_t fill_qty = std::min(aggressor.remaining(),
+                uint64_t fill_qty = min(aggressor.remaining(),
                                              passive.remaining());
                 if (fill_qty == 0) { ++oid_it; continue; }
 
@@ -230,7 +232,7 @@ std::vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
                 }
 
                 Order&   passive  = pit->second;
-                uint64_t fill_qty = std::min(aggressor.remaining(),
+                uint64_t fill_qty = min(aggressor.remaining(),
                                              passive.remaining());
                 if (fill_qty == 0) { ++oid_it; continue; }
 
@@ -347,8 +349,8 @@ MatchResult MatchingEngine::match_fok(Order& order, OrderBook& book) {
     if (available < order.quantity) {
         result.rejected      = true;
         result.reject_reason = "FOK: insufficient liquidity (" +
-                               std::to_string(available) + " available, " +
-                               std::to_string(order.quantity) + " required)";
+                               to_string(available) + " available, " +
+                               to_string(order.quantity) + " required)";
         order.status = OrderStatus::REJECTED;
         return result;
     }
@@ -371,7 +373,7 @@ Trade MatchingEngine::make_trade(uint64_t buy_id,
     t.sell_order_id = sell_id;
     t.price         = price;
     t.quantity      = qty;
-    t.timestamp     = std::chrono::high_resolution_clock::now().time_since_epoch();
+    t.timestamp     = chrono::high_resolution_clock::now().time_since_epoch();
     return t;
 }
 

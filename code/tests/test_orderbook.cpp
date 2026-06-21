@@ -14,6 +14,8 @@
 #include <thread>
 #include <vector>
 
+using namespace std;
+
 using namespace lob;
 
 // ---------------------------------------------------------------------------
@@ -25,9 +27,9 @@ static Order make_order(uint64_t    id,
                         double      price,
                         uint64_t    qty,
                         OrderType   type = OrderType::LIMIT,
-                        std::string sym  = "AAPL") {
-    return Order{id, side, type, price, qty, std::move(sym),
-                 std::chrono::nanoseconds{0}};
+                        string sym  = "AAPL") {
+    return Order{id, side, type, price, qty, move(sym),
+                 chrono::nanoseconds{0}};
 }
 
 // ===========================================================================
@@ -57,14 +59,14 @@ TEST_CASE("Order: is_active() states", "[order]") {
 }
 
 TEST_CASE("Order: to_string helpers", "[order]") {
-    REQUIRE(std::string(to_string(Side::BUY))          == "BUY");
-    REQUIRE(std::string(to_string(Side::SELL))         == "SELL");
-    REQUIRE(std::string(to_string(OrderType::LIMIT))   == "LIMIT");
-    REQUIRE(std::string(to_string(OrderType::MARKET))  == "MARKET");
-    REQUIRE(std::string(to_string(OrderType::IOC))     == "IOC");
-    REQUIRE(std::string(to_string(OrderType::FOK))     == "FOK");
-    REQUIRE(std::string(to_string(OrderStatus::ACTIVE)) == "ACTIVE");
-    REQUIRE(std::string(to_string(OrderStatus::FILLED)) == "FILLED");
+    REQUIRE(string(as_string(Side::BUY))          == "BUY");
+    REQUIRE(string(as_string(Side::SELL))         == "SELL");
+    REQUIRE(string(as_string(OrderType::LIMIT))   == "LIMIT");
+    REQUIRE(string(as_string(OrderType::MARKET))  == "MARKET");
+    REQUIRE(string(as_string(OrderType::IOC))     == "IOC");
+    REQUIRE(string(as_string(OrderType::FOK))     == "FOK");
+    REQUIRE(string(as_string(OrderStatus::ACTIVE)) == "ACTIVE");
+    REQUIRE(string(as_string(OrderStatus::FILLED)) == "FILLED");
 }
 
 // ===========================================================================
@@ -387,7 +389,7 @@ TEST_CASE("MatchingEngine: trade callback fires", "[matching]") {
 TEST_CASE("MatchingEngine: fill callback fires for both sides", "[matching]") {
     MatchingEngine engine;
     engine.register_symbol("AAPL");
-    std::vector<uint64_t> filled_ids;
+    vector<uint64_t> filled_ids;
     engine.set_fill_callback([&](uint64_t id, uint64_t, double) {
         filled_ids.push_back(id);
     });
@@ -395,8 +397,8 @@ TEST_CASE("MatchingEngine: fill callback fires for both sides", "[matching]") {
     engine.submit_order(make_order(2, Side::BUY,  100.0, 50));
     // Both buy_order_id (2) and sell_order_id (1) should appear
     REQUIRE(filled_ids.size() == 2);
-    bool has_passive  = std::find(filled_ids.begin(), filled_ids.end(), 1) != filled_ids.end();
-    bool has_aggressor= std::find(filled_ids.begin(), filled_ids.end(), 2) != filled_ids.end();
+    bool has_passive  = find(filled_ids.begin(), filled_ids.end(), 1) != filled_ids.end();
+    bool has_aggressor= find(filled_ids.begin(), filled_ids.end(), 2) != filled_ids.end();
     REQUIRE(has_passive);
     REQUIRE(has_aggressor);
 }
@@ -424,7 +426,7 @@ TEST_CASE("MatchingEngine: market order against empty book", "[matching]") {
     MatchingEngine engine;
     engine.register_symbol("AAPL");
     auto o = make_order(1, Side::BUY, 0.0, 100, OrderType::MARKET);
-    auto result = engine.submit_order(std::move(o));
+    auto result = engine.submit_order(move(o));
     REQUIRE(result.trades.empty());
     REQUIRE_FALSE(result.fully_filled);
     REQUIRE_FALSE(result.resting);
@@ -507,7 +509,7 @@ TEST_CASE("MatchingEngine: reject callback fires on FOK rejection", "[matching]"
     MatchingEngine engine;
     engine.register_symbol("AAPL");
     bool rejected_cb_fired = false;
-    engine.set_reject_callback([&](uint64_t, const std::string&) {
+    engine.set_reject_callback([&](uint64_t, const string&) {
         rejected_cb_fired = true;
     });
     engine.submit_order(make_order(1, Side::SELL, 100.0, 10));
@@ -736,9 +738,9 @@ TEST_CASE("RingBuffer: wrap-around correctness", "[ringbuffer]") {
 }
 
 TEST_CASE("RingBuffer: move-push", "[ringbuffer]") {
-    RingBuffer<std::string, 8> rb;
-    std::string s = "hello";
-    REQUIRE(rb.push(std::move(s)));
+    RingBuffer<string, 8> rb;
+    string s = "hello";
+    REQUIRE(rb.push(move(s)));
     auto v = rb.pop();
     REQUIRE(v.has_value());
     REQUIRE(*v == "hello");
@@ -793,7 +795,7 @@ TEST_CASE("MemoryPool: deallocate nullptr is safe", "[mempool]") {
 
 TEST_CASE("MemoryPool: all slots reusable after full cycle", "[mempool]") {
     MemoryPool<int, 4> pool;
-    std::vector<int*> ptrs;
+    vector<int*> ptrs;
     for (int i = 0; i < 4; ++i) ptrs.push_back(pool.allocate());
     REQUIRE(pool.available() == 0);
     for (auto* p : ptrs) pool.deallocate(p);
@@ -804,15 +806,50 @@ TEST_CASE("MemoryPool: all slots reusable after full cycle", "[mempool]") {
     pool.deallocate(p);
 }
 
+// Regression: with a non-trivially-destructible T, raw deallocate() must NOT
+// run the destructor (that would destroy never-constructed storage), while
+// construct()/destroy() must run the constructor and destructor exactly once.
+namespace {
+struct DtorCounter {
+    static inline int live = 0;
+    DtorCounter()  { ++live; }
+    ~DtorCounter() { --live; }
+};
+} // namespace
+
+TEST_CASE("MemoryPool: raw allocate/deallocate does not run destructor", "[mempool]") {
+    DtorCounter::live = 0;
+    MemoryPool<DtorCounter, 8> pool;
+    // allocate() returns raw storage: no constructor runs.
+    DtorCounter* p = pool.allocate();
+    REQUIRE(p != nullptr);
+    REQUIRE(DtorCounter::live == 0);
+    // deallocate() must not run the destructor on unconstructed storage.
+    REQUIRE_NOTHROW(pool.deallocate(p));
+    REQUIRE(DtorCounter::live == 0);
+    REQUIRE(pool.available() == 8);
+}
+
+TEST_CASE("MemoryPool: construct/destroy run ctor and dtor exactly once", "[mempool]") {
+    DtorCounter::live = 0;
+    MemoryPool<DtorCounter, 8> pool;
+    DtorCounter* p = pool.construct();
+    REQUIRE(p != nullptr);
+    REQUIRE(DtorCounter::live == 1);
+    pool.destroy(p);
+    REQUIRE(DtorCounter::live == 0);
+    REQUIRE(pool.available() == 8);
+}
+
 // ===========================================================================
 // LatencyRecorder
 // ===========================================================================
 
 TEST_CASE("LatencyRecorder: basic statistics correct", "[latency]") {
     LatencyRecorder rec;
-    rec.record(std::chrono::nanoseconds{100});
-    rec.record(std::chrono::nanoseconds{200});
-    rec.record(std::chrono::nanoseconds{300});
+    rec.record(chrono::nanoseconds{100});
+    rec.record(chrono::nanoseconds{200});
+    rec.record(chrono::nanoseconds{300});
     REQUIRE(rec.count()   == 3);
     REQUIRE(rec.mean_ns() == Catch::Approx(200.0));
     REQUIRE(rec.min_ns()  == 100);
@@ -823,9 +860,9 @@ TEST_CASE("LatencyRecorder: basic statistics correct", "[latency]") {
 
 TEST_CASE("LatencyRecorder: stddev_ns correct", "[latency]") {
     LatencyRecorder rec;
-    rec.record(std::chrono::nanoseconds{100});
-    rec.record(std::chrono::nanoseconds{200});
-    rec.record(std::chrono::nanoseconds{300});
+    rec.record(chrono::nanoseconds{100});
+    rec.record(chrono::nanoseconds{200});
+    rec.record(chrono::nanoseconds{300});
     // Sample stddev of [100,200,300] = sqrt(((100-200)^2+(200-200)^2+(300-200)^2)/2)
     //                                = sqrt(20000) ≈ 100
     REQUIRE(rec.stddev_ns() == Catch::Approx(100.0).epsilon(0.01));
@@ -843,7 +880,7 @@ TEST_CASE("LatencyRecorder: empty recorder safe", "[latency]") {
 
 TEST_CASE("LatencyRecorder: clear resets state", "[latency]") {
     LatencyRecorder rec;
-    rec.record(std::chrono::nanoseconds{500});
+    rec.record(chrono::nanoseconds{500});
     rec.clear();
     REQUIRE(rec.count() == 0);
 }
@@ -851,7 +888,7 @@ TEST_CASE("LatencyRecorder: clear resets state", "[latency]") {
 TEST_CASE("LatencyRecorder: p99 with 100 samples", "[latency]") {
     LatencyRecorder rec;
     for (int i = 1; i <= 100; ++i)
-        rec.record(std::chrono::nanoseconds{static_cast<int64_t>(i)});
+        rec.record(chrono::nanoseconds{static_cast<int64_t>(i)});
     REQUIRE(rec.p99_ns() >= 98);
     REQUIRE(rec.p99_ns() <= 100);
 }
@@ -859,16 +896,16 @@ TEST_CASE("LatencyRecorder: p99 with 100 samples", "[latency]") {
 TEST_CASE("LatencyRecorder: p90 plausible", "[latency]") {
     LatencyRecorder rec;
     for (int i = 1; i <= 100; ++i)
-        rec.record(std::chrono::nanoseconds{static_cast<int64_t>(i)});
+        rec.record(chrono::nanoseconds{static_cast<int64_t>(i)});
     REQUIRE(rec.p90_ns() >= 88);
     REQUIRE(rec.p90_ns() <= 92);
 }
 
 TEST_CASE("LatencyRecorder: merge combines samples", "[latency]") {
     LatencyRecorder a, b;
-    a.record(std::chrono::nanoseconds{100});
-    b.record(std::chrono::nanoseconds{200});
-    b.record(std::chrono::nanoseconds{300});
+    a.record(chrono::nanoseconds{100});
+    b.record(chrono::nanoseconds{200});
+    b.record(chrono::nanoseconds{300});
     a.merge(b);
     REQUIRE(a.count() == 3);
     REQUIRE(a.mean_ns() == Catch::Approx(200.0));

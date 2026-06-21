@@ -7,6 +7,8 @@
 #include <string>
 #include <string_view>
 
+using namespace std;
+
 namespace lob {
 
 enum class LogLevel : int { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3 };
@@ -23,12 +25,12 @@ public:
     void set_level(LogLevel lvl) noexcept { level_ = lvl; }
     [[nodiscard]] LogLevel level() const noexcept { return level_; }
 
-    void log(LogLevel lvl, std::string_view component, std::string_view msg) {
+    void log(LogLevel lvl, string_view component, string_view msg) {
         if (lvl < level_) return;
 
-        auto now   = std::chrono::system_clock::now();
-        auto now_t = std::chrono::system_clock::to_time_t(now);
-        auto ms    = std::chrono::duration_cast<std::chrono::milliseconds>(
+        auto now   = chrono::system_clock::now();
+        auto now_t = chrono::system_clock::to_time_t(now);
+        auto ms    = chrono::duration_cast<chrono::milliseconds>(
                          now.time_since_epoch()) %
                      1000;
 
@@ -36,11 +38,11 @@ public:
 #ifdef _WIN32
         struct tm tm_buf{};
         localtime_s(&tm_buf, &now_t);
-        std::strftime(buf, sizeof(buf), "%H:%M:%S", &tm_buf);
+        strftime(buf, sizeof(buf), "%H:%M:%S", &tm_buf);
 #else
         struct tm tm_buf{};
         localtime_r(&now_t, &tm_buf);
-        std::strftime(buf, sizeof(buf), "%H:%M:%S", &tm_buf);
+        strftime(buf, sizeof(buf), "%H:%M:%S", &tm_buf);
 #endif
 
         const char* lvl_str = "INFO ";
@@ -51,8 +53,8 @@ public:
             case LogLevel::ERROR: lvl_str = "ERROR"; break;
         }
 
-        std::lock_guard<std::mutex> lk(mu_);
-        std::fprintf(stderr, "[%s.%03lld][%s][%.*s] %.*s\n",
+        lock_guard<mutex> lk(mu_);
+        fprintf(stderr, "[%s.%03lld][%s][%.*s] %.*s\n",
                      buf,
                      static_cast<long long>(ms.count()),
                      lvl_str,
@@ -62,7 +64,7 @@ public:
 
     /// Redirect output to a file.  Pass nullptr to revert to stderr.
     /// NOT thread-safe; call before spawning any logging threads.
-    void set_output(std::FILE* fp) noexcept {
+    void set_output(FILE* fp) noexcept {
         out_ = fp ? fp : stderr;
     }
 
@@ -70,8 +72,8 @@ private:
     Logger() : out_(stderr) {}
 
     LogLevel   level_{LogLevel::INFO};
-    std::mutex mu_;
-    std::FILE* out_;
+    mutex mu_;
+    FILE* out_;
 };
 
 // ---------------------------------------------------------------------------

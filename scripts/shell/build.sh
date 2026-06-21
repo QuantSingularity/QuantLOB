@@ -4,9 +4,17 @@ set -euo pipefail
 BUILD_TYPE="${1:-Release}"
 BUILD_DIR="build"
 
+# Prefer Ninja when available, otherwise fall back to the default generator.
+if command -v ninja >/dev/null 2>&1; then
+  GEN_ARGS=(-G Ninja)
+else
+  echo "    (ninja not found; using the default CMake generator)"
+  GEN_ARGS=()
+fi
+
 echo "==> Configuring QuantLOB (${BUILD_TYPE})..."
 cmake -B "${BUILD_DIR}" \
-      -G Ninja \
+      "${GEN_ARGS[@]}" \
       -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
       -DQUANTLOB_BUILD_TESTS=ON \
       -DQUANTLOB_BUILD_BENCHMARKS=ON \

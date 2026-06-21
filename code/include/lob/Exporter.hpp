@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 
 /// Exports order book snapshots, latency samples, engine stats, and trade logs
@@ -27,9 +29,9 @@ public:
     ///   BID,99.50,1000
     ///   ASK,100.50,500
     static void export_snapshot(const BookSnapshot&          snap,
-                                const std::filesystem::path& path) {
-        std::ofstream f = open_write(path);
-        f << std::fixed << std::setprecision(6);
+                                const filesystem::path& path) {
+        ofstream f = open_write(path);
+        f << fixed << setprecision(6);
         f << "side,price,quantity\n";
         for (auto& [p, q] : snap.bids)
             f << "BID," << p << "," << q << "\n";
@@ -44,18 +46,18 @@ public:
     /// Export latency samples — one nanosecond value per line.
     /// Header: latency_ns
     static void export_latency(const LatencyRecorder&       rec,
-                               const std::filesystem::path& path) {
-        std::ofstream f = open_write(path);
+                               const filesystem::path& path) {
+        ofstream f = open_write(path);
         f << "latency_ns\n";
-        for (std::size_t i = 0; i < rec.count(); ++i)
+        for (size_t i = 0; i < rec.count(); ++i)
             f << rec.sample(i) << "\n";
     }
 
     /// Export a summary statistics file (key=value format).
     static void export_latency_summary(const LatencyRecorder&       rec,
-                                       const std::filesystem::path& path) {
-        std::ofstream f = open_write(path);
-        f << std::fixed << std::setprecision(2);
+                                       const filesystem::path& path) {
+        ofstream f = open_write(path);
+        f << fixed << setprecision(2);
         f << "count="    << rec.count()                                         << "\n"
           << "mean_ns="  << static_cast<uint64_t>(rec.mean_ns())                << "\n"
           << "stddev_ns="<< static_cast<uint64_t>(rec.stddev_ns())              << "\n"
@@ -73,9 +75,9 @@ public:
 
     /// Export engine stats to a simple key=value file.
     static void export_stats(const EngineStats&           stats,
-                             const std::filesystem::path& path) {
-        std::ofstream f = open_write(path);
-        f << std::fixed << std::setprecision(2);
+                             const filesystem::path& path) {
+        ofstream f = open_write(path);
+        f << fixed << setprecision(2);
         f << "orders_processed="  << stats.orders_processed  << "\n"
           << "orders_matched="    << stats.orders_matched    << "\n"
           << "orders_resting="    << stats.orders_resting    << "\n"
@@ -91,18 +93,18 @@ public:
     // ------------------------------------------------------------------
 
     /// Write the trade log CSV header to an already-open stream.
-    static void write_trade_header(std::ofstream& f) {
+    static void write_trade_header(ofstream& f) {
         f << "timestamp_ns,buy_order_id,sell_order_id,price,quantity,notional\n";
     }
 
     /// Append a single trade to an already-open trade log stream.
-    static void write_trade(std::ofstream& f, const Trade& t) {
+    static void write_trade(ofstream& f, const Trade& t) {
         f << t.timestamp.count()    << ","
           << t.buy_order_id         << ","
           << t.sell_order_id        << ","
-          << std::fixed << std::setprecision(6) << t.price << ","
+          << fixed << setprecision(6) << t.price << ","
           << t.quantity             << ","
-          << std::fixed << std::setprecision(2)
+          << fixed << setprecision(2)
           << (t.price * static_cast<double>(t.quantity)) << "\n";
     }
 
@@ -112,24 +114,24 @@ public:
 
     /// Append a snapshot row to a time-series CSV.
     /// Schema: timestamp_ns,side,price,quantity
-    static void append_snapshot_row(std::ofstream&      f,
+    static void append_snapshot_row(ofstream&      f,
                                     const BookSnapshot& snap) {
-        f << std::fixed << std::setprecision(6);
+        f << fixed << setprecision(6);
         for (auto& [p, q] : snap.bids)
             f << snap.timestamp.count() << ",BID," << p << "," << q << "\n";
         for (auto& [p, q] : snap.asks)
             f << snap.timestamp.count() << ",ASK," << p << "," << q << "\n";
     }
 
-    static void write_timeseries_header(std::ofstream& f) {
+    static void write_timeseries_header(ofstream& f) {
         f << "timestamp_ns,side,price,quantity\n";
     }
 
 private:
-    static std::ofstream open_write(const std::filesystem::path& path) {
-        std::ofstream f(path);
+    static ofstream open_write(const filesystem::path& path) {
+        ofstream f(path);
         if (!f.is_open())
-            throw std::runtime_error("Exporter: cannot open for writing: " +
+            throw runtime_error("Exporter: cannot open for writing: " +
                                      path.string());
         return f;
     }

@@ -72,30 +72,29 @@ def main():
 
     mids = wide["mid"].values
 
-    print(f"Evaluating on {len(wide)} snapshots\n")
-
-    # MidPricePredictor
-    w_mid, b_mid, meta_mid = load_weights(args.mid_weights)
-    X_mid = np.zeros((len(wide), len(w_mid)))
-    for i, row in wide.iterrows():
-        X_mid[i, 0] = float(row["ask_p"]) - float(row["bid_p"])
-        X_mid[i, 4] = float(row["imb"])
-
-    mu = X_mid.mean(axis=0)
-    std = X_mid.std(axis=0) + 1e-8
-    X_n = (X_mid - mu) / std
-    y_pred = X_n @ w_mid + b_mid
     y_true = np.zeros(len(mids))
     y_true[: -args.horizon] = mids[args.horizon :] - mids[: -args.horizon]
-
     valid = (mids > 0) & (np.arange(len(mids)) < len(mids) - args.horizon)
-    mae = float(np.mean(np.abs(y_pred[valid] - y_true[valid])))
-    rmse = math.sqrt(float(np.mean((y_pred[valid] - y_true[valid]) ** 2)))
-    nz = y_true[valid] != 0
+
+    print(f"Evaluating on {len(wide)} snapshots\n")
+
+    # MidPricePredictor — evaluate on the exact features the trainer builds so
+    # the numbers reflect the real model, not a simplified two-feature subset.
+    from train_mid_price import compute_features as mid_features
+    from train_mid_price import load_timeseries
+
+    w_mid, b_mid, meta_mid = load_weights(args.mid_weights)
+    mid_wide = load_timeseries(args.data)
+    X_mid, y_mid = mid_features(mid_wide)
+    # Exported weights operate on raw features (the trainer folds its internal
+    # standardisation into the saved weights), so apply them directly.
+    y_pred = X_mid @ w_mid + b_mid
+
+    mae = float(np.mean(np.abs(y_pred - y_mid))) if len(y_mid) else 0.0
+    rmse = math.sqrt(float(np.mean((y_pred - y_mid) ** 2))) if len(y_mid) else 0.0
+    nz = y_mid != 0
     dir_acc = (
-        float(np.mean(np.sign(y_pred[valid][nz]) == np.sign(y_true[valid][nz])))
-        if nz.any()
-        else 0.0
+        float(np.mean(np.sign(y_pred[nz]) == np.sign(y_mid[nz]))) if nz.any() else 0.0
     )
 
     print("MidPricePredictor results:")
@@ -119,14 +118,12 @@ def main():
         X_fl[i, 0] = sp
         X_fl[i, 1] = sp / mid if mid > 0 else 0.0
         X_fl[i, 4] = float(row["imb"])
+        X_fl[i, 5] = float(row["imb"])  # matches train_order_flow feature layout
 
-    mu2 = X_fl.mean(axis=0)
-    std2 = X_fl.std(axis=0) + 1e-8
-    X_fl_n = (X_fl - mu2) / std2
-
-    # Label: BUY if mid rises next tick
+    # OrderFlowPredictor weights are trained on raw features (no standardisation),
+    # so apply them directly here too.
     flow_labels = (y_true > 0).astype(float)
-    probs = sigmoid(X_fl_n @ w_fl + b_fl)
+    probs = sigmoid(X_fl @ w_fl + b_fl)
     acc = float(np.mean((probs >= 0.5).astype(float)[valid] == flow_labels[valid]))
 
     print("OrderFlowPredictor results:")

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
@@ -41,8 +43,8 @@ public:
     /// Compute an anomaly score without updating internal statistics.
     [[nodiscard]] AnomalyResult score(const FeatureVector& fv) const;
 
-    bool load_state(const std::string& path);
-    bool save_state(const std::string& path) const;
+    bool load_state(const string& path);
+    bool save_state(const string& path) const;
     void reset() noexcept;
 
     [[nodiscard]] bool     is_warmed_up() const noexcept { return warmed_up_; }
@@ -50,8 +52,8 @@ public:
 
 private:
     AnomalyDetectorConfig cfg_;
-    std::vector<double>   ewma_mean_;
-    std::vector<double>   ewma_var_;
+    vector<double>   ewma_mean_;
+    vector<double>   ewma_var_;
     bool                  warmed_up_{false};
     uint64_t              n_updates_{0};
 };

@@ -4,20 +4,22 @@
 #include <fstream>
 #include <sstream>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
 AnomalyDetector::AnomalyDetector(AnomalyDetectorConfig cfg)
     : cfg_(cfg),
-      ewma_mean_(static_cast<std::size_t>(cfg.feature_dim), 0.0),
-      ewma_var_(static_cast<std::size_t>(cfg.feature_dim), 1.0) {}
+      ewma_mean_(static_cast<size_t>(cfg.feature_dim), 0.0),
+      ewma_var_(static_cast<size_t>(cfg.feature_dim), 1.0) {}
 
 void AnomalyDetector::update(const FeatureVector& fv) {
     if (!fv.valid) return;
 
     double alpha = cfg_.ewma_alpha;
 
-    for (std::size_t i = 0; i < ewma_mean_.size() && i < fv.data.size(); ++i) {
+    for (size_t i = 0; i < ewma_mean_.size() && i < fv.data.size(); ++i) {
         double x    = fv.data[i];
         double diff = x - ewma_mean_[i];
         ewma_mean_[i] += alpha * diff;
@@ -36,11 +38,11 @@ AnomalyResult AnomalyDetector::score(const FeatureVector& fv) const {
     double total_z   = 0.0;
     int    n_flagged = 0;
 
-    for (std::size_t i = 0; i < ewma_mean_.size() && i < fv.data.size(); ++i) {
-        double sd = std::sqrt(ewma_var_[i]);
+    for (size_t i = 0; i < ewma_mean_.size() && i < fv.data.size(); ++i) {
+        double sd = sqrt(ewma_var_[i]);
         if (sd < 1e-12) continue; // skip constant features
 
-        double z = std::abs(fv.data[i] - ewma_mean_[i]) / sd;
+        double z = abs(fv.data[i] - ewma_mean_[i]) / sd;
         total_z += z;
         if (z > cfg_.threshold_sigma) ++n_flagged;
     }
@@ -52,19 +54,19 @@ AnomalyResult AnomalyDetector::score(const FeatureVector& fv) const {
 }
 
 void AnomalyDetector::reset() noexcept {
-    std::fill(ewma_mean_.begin(), ewma_mean_.end(), 0.0);
-    std::fill(ewma_var_.begin(),  ewma_var_.end(),  1.0);
+    fill(ewma_mean_.begin(), ewma_mean_.end(), 0.0);
+    fill(ewma_var_.begin(),  ewma_var_.end(),  1.0);
     warmed_up_ = false;
     n_updates_ = 0;
 }
 
-bool AnomalyDetector::save_state(const std::string& path) const {
-    std::ofstream f(path);
+bool AnomalyDetector::save_state(const string& path) const {
+    ofstream f(path);
     if (!f.is_open()) return false;
 
-    auto write_array = [&](const std::vector<double>& v) {
+    auto write_array = [&](const vector<double>& v) {
         f << "[";
-        for (std::size_t i = 0; i < v.size(); ++i) {
+        for (size_t i = 0; i < v.size(); ++i) {
             if (i) f << ", ";
             f << v[i];
         }
@@ -86,24 +88,24 @@ bool AnomalyDetector::save_state(const std::string& path) const {
     return f.good();
 }
 
-bool AnomalyDetector::load_state(const std::string& path) {
-    std::ifstream f(path);
+bool AnomalyDetector::load_state(const string& path) {
+    ifstream f(path);
     if (!f.is_open()) return false;
 
-    std::string content((std::istreambuf_iterator<char>(f)),
-                         std::istreambuf_iterator<char>());
+    string content((istreambuf_iterator<char>(f)),
+                         istreambuf_iterator<char>());
 
-    auto load_array = [&](const std::string& key, std::vector<double>& out) {
+    auto load_array = [&](const string& key, vector<double>& out) {
         auto pos = content.find("\"" + key + "\":");
-        if (pos == std::string::npos) return;
+        if (pos == string::npos) return;
         auto open  = content.find('[', pos);
         auto close = content.find(']', open);
-        if (open == std::string::npos || close == std::string::npos) return;
-        std::istringstream ss(content.substr(open + 1, close - open - 1));
-        std::string token;
-        std::size_t idx = 0;
-        while (std::getline(ss, token, ',') && idx < out.size()) {
-            try { out[idx++] = std::stod(token); } catch (...) {}
+        if (open == string::npos || close == string::npos) return;
+        istringstream ss(content.substr(open + 1, close - open - 1));
+        string token;
+        size_t idx = 0;
+        while (getline(ss, token, ',') && idx < out.size()) {
+            try { out[idx++] = stod(token); } catch (...) {}
         }
     };
 
@@ -111,8 +113,8 @@ bool AnomalyDetector::load_state(const std::string& path) {
     load_array("ewma_variance", ewma_var_);
 
     auto nu_pos = content.find("\"n_updates\":");
-    if (nu_pos != std::string::npos) {
-        std::istringstream ss(content.substr(nu_pos + 12));
+    if (nu_pos != string::npos) {
+        istringstream ss(content.substr(nu_pos + 12));
         ss >> n_updates_;
         if (n_updates_ >= static_cast<uint64_t>(cfg_.feature_dim * 2))
             warmed_up_ = true;

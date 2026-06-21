@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 
 /// Lock-free-safe accumulator of nanosecond latency samples.
@@ -15,22 +17,22 @@ namespace lob {
 /// measurement with offline statistical analysis.
 class LatencyRecorder {
 public:
-    explicit LatencyRecorder(std::size_t reserve = 1024) {
+    explicit LatencyRecorder(size_t reserve = 1024) {
         samples_.reserve(reserve);
     }
 
-    void record(std::chrono::nanoseconds ns) {
+    void record(chrono::nanoseconds ns) {
         samples_.push_back(static_cast<uint64_t>(ns.count()));
     }
 
     void clear() noexcept { samples_.clear(); }
 
-    [[nodiscard]] std::size_t count() const noexcept { return samples_.size(); }
+    [[nodiscard]] size_t count() const noexcept { return samples_.size(); }
 
     /// Direct sample access (used by Exporter).
-    [[nodiscard]] uint64_t sample(std::size_t idx) const {
+    [[nodiscard]] uint64_t sample(size_t idx) const {
         if (idx >= samples_.size())
-            throw std::out_of_range("LatencyRecorder::sample: index out of range");
+            throw out_of_range("LatencyRecorder::sample: index out of range");
         return samples_[idx];
     }
 
@@ -49,17 +51,17 @@ public:
             double d = static_cast<double>(v) - m;
             sq += d * d;
         }
-        return std::sqrt(sq / static_cast<double>(samples_.size() - 1));
+        return sqrt(sq / static_cast<double>(samples_.size() - 1));
     }
 
     [[nodiscard]] uint64_t min_ns() const noexcept {
         if (samples_.empty()) return 0;
-        return *std::min_element(samples_.begin(), samples_.end());
+        return *min_element(samples_.begin(), samples_.end());
     }
 
     [[nodiscard]] uint64_t max_ns() const noexcept {
         if (samples_.empty()) return 0;
-        return *std::max_element(samples_.begin(), samples_.end());
+        return *max_element(samples_.begin(), samples_.end());
     }
 
     /// Returns the p-th percentile in nanoseconds (p in [0.0, 100.0]).
@@ -67,11 +69,11 @@ public:
     [[nodiscard]] uint64_t percentile_ns(double p) const {
         if (samples_.empty()) return 0;
         if (p < 0.0 || p > 100.0)
-            throw std::out_of_range("percentile_ns: p must be in [0, 100]");
-        std::vector<uint64_t> sorted = samples_;
-        std::sort(sorted.begin(), sorted.end());
+            throw out_of_range("percentile_ns: p must be in [0, 100]");
+        vector<uint64_t> sorted = samples_;
+        sort(sorted.begin(), sorted.end());
         double      frac = p / 100.0 * static_cast<double>(sorted.size() - 1);
-        std::size_t idx  = static_cast<std::size_t>(frac);
+        size_t idx  = static_cast<size_t>(frac);
         if (idx >= sorted.size()) idx = sorted.size() - 1;
         return sorted[idx];
     }
@@ -89,7 +91,7 @@ public:
     }
 
 private:
-    std::vector<uint64_t> samples_;
+    vector<uint64_t> samples_;
 };
 
 /// RAII timer: records elapsed nanoseconds into a LatencyRecorder on
@@ -98,12 +100,12 @@ private:
 class ScopedTimer {
 public:
     explicit ScopedTimer(LatencyRecorder& rec)
-        : rec_(rec), start_(std::chrono::high_resolution_clock::now()) {}
+        : rec_(rec), start_(chrono::high_resolution_clock::now()) {}
 
     ~ScopedTimer() noexcept {
-        auto end = std::chrono::high_resolution_clock::now();
+        auto end = chrono::high_resolution_clock::now();
         rec_.record(
-            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start_));
+            chrono::duration_cast<chrono::nanoseconds>(end - start_));
     }
 
     ScopedTimer(const ScopedTimer&)            = delete;
@@ -111,7 +113,7 @@ public:
 
 private:
     LatencyRecorder&                               rec_;
-    std::chrono::high_resolution_clock::time_point start_;
+    chrono::high_resolution_clock::time_point start_;
 };
 
 } // namespace lob

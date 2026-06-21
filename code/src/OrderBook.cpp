@@ -4,10 +4,12 @@
 #include <chrono>
 #include <stdexcept>
 
+using namespace std;
+
 namespace lob {
 
-OrderBook::OrderBook(std::string symbol)
-    : symbol_(std::move(symbol)) {}
+OrderBook::OrderBook(string symbol)
+    : symbol_(move(symbol)) {}
 
 // ---------------------------------------------------------------------------
 // Mutation
@@ -30,7 +32,7 @@ bool OrderBook::add_order(Order order) {
         it->second.order_ids.push_back(order.id);
     }
 
-    orders_.emplace(order.id, std::move(order));
+    orders_.emplace(order.id, move(order));
     return true;
 }
 
@@ -94,7 +96,7 @@ void OrderBook::apply_fill(uint64_t order_id, uint64_t fill_qty) {
     if (it == orders_.end()) return;
 
     Order& o = it->second;
-    fill_qty = std::min(fill_qty, o.remaining());
+    fill_qty = min(fill_qty, o.remaining());
 
     o.filled_quantity += fill_qty;
     o.status = (o.remaining() == 0) ? OrderStatus::FILLED : OrderStatus::PARTIAL;
@@ -143,34 +145,34 @@ void OrderBook::remove_fully_filled(uint64_t order_id) {
 // Best prices / simple statistics
 // ---------------------------------------------------------------------------
 
-std::optional<double> OrderBook::best_bid() const noexcept {
-    if (bids_.empty()) return std::nullopt;
+optional<double> OrderBook::best_bid() const noexcept {
+    if (bids_.empty()) return nullopt;
     return bids_.begin()->first;
 }
 
-std::optional<double> OrderBook::best_ask() const noexcept {
-    if (asks_.empty()) return std::nullopt;
+optional<double> OrderBook::best_ask() const noexcept {
+    if (asks_.empty()) return nullopt;
     return asks_.begin()->first;
 }
 
-std::optional<double> OrderBook::mid_price() const noexcept {
+optional<double> OrderBook::mid_price() const noexcept {
     auto bid = best_bid();
     auto ask = best_ask();
-    if (!bid || !ask) return std::nullopt;
+    if (!bid || !ask) return nullopt;
     return (*bid + *ask) * 0.5;
 }
 
-std::optional<double> OrderBook::spread() const noexcept {
+optional<double> OrderBook::spread() const noexcept {
     auto bid = best_bid();
     auto ask = best_ask();
-    if (!bid || !ask) return std::nullopt;
+    if (!bid || !ask) return nullopt;
     return *ask - *bid;
 }
 
-std::optional<double> OrderBook::relative_spread() const noexcept {
+optional<double> OrderBook::relative_spread() const noexcept {
     auto mid = mid_price();
     auto spd = spread();
-    if (!mid || !spd || *mid == 0.0) return std::nullopt;
+    if (!mid || !spd || *mid == 0.0) return nullopt;
     return *spd / *mid;
 }
 
@@ -186,15 +188,15 @@ uint64_t OrderBook::ask_depth() const noexcept {
     return total;
 }
 
-std::size_t OrderBook::order_count() const noexcept {
+size_t OrderBook::order_count() const noexcept {
     return orders_.size();
 }
 
-std::size_t OrderBook::level_count_bids() const noexcept {
+size_t OrderBook::level_count_bids() const noexcept {
     return bids_.size();
 }
 
-std::size_t OrderBook::level_count_asks() const noexcept {
+size_t OrderBook::level_count_asks() const noexcept {
     return asks_.size();
 }
 
@@ -207,13 +209,13 @@ double OrderBook::imbalance() const noexcept {
             static_cast<double>(total);
 }
 
-VWAPResult OrderBook::bid_vwap(std::size_t levels) const noexcept {
+VWAPResult OrderBook::bid_vwap(size_t levels) const noexcept {
     VWAPResult result{0.0, 0, false};
     if (bids_.empty()) return result;
 
     double   weighted_sum = 0.0;
     uint64_t total_qty    = 0;
-    std::size_t n = 0;
+    size_t n = 0;
 
     for (auto& [p, lvl] : bids_) {
         if (n++ >= levels) break;
@@ -229,13 +231,13 @@ VWAPResult OrderBook::bid_vwap(std::size_t levels) const noexcept {
     return result;
 }
 
-VWAPResult OrderBook::ask_vwap(std::size_t levels) const noexcept {
+VWAPResult OrderBook::ask_vwap(size_t levels) const noexcept {
     VWAPResult result{0.0, 0, false};
     if (asks_.empty()) return result;
 
     double   weighted_sum = 0.0;
     uint64_t total_qty    = 0;
-    std::size_t n = 0;
+    size_t n = 0;
 
     for (auto& [p, lvl] : asks_) {
         if (n++ >= levels) break;
@@ -269,10 +271,10 @@ uint64_t OrderBook::available_qty_at_price(Side side, double price) const noexce
     return qty;
 }
 
-std::optional<double> OrderBook::estimate_market_impact(
+optional<double> OrderBook::estimate_market_impact(
     Side side, uint64_t qty) const noexcept {
 
-    if (qty == 0) return std::nullopt;
+    if (qty == 0) return nullopt;
 
     double   weighted_sum = 0.0;
     uint64_t remaining    = qty;
@@ -281,7 +283,7 @@ std::optional<double> OrderBook::estimate_market_impact(
         // Walk asks in ascending price order
         for (auto& [p, lvl] : asks_) {
             if (remaining == 0) break;
-            uint64_t fill = std::min(remaining, lvl.total_quantity);
+            uint64_t fill = min(remaining, lvl.total_quantity);
             weighted_sum += p * static_cast<double>(fill);
             remaining    -= fill;
         }
@@ -289,23 +291,23 @@ std::optional<double> OrderBook::estimate_market_impact(
         // Walk bids in descending price order
         for (auto& [p, lvl] : bids_) {
             if (remaining == 0) break;
-            uint64_t fill = std::min(remaining, lvl.total_quantity);
+            uint64_t fill = min(remaining, lvl.total_quantity);
             weighted_sum += p * static_cast<double>(fill);
             remaining    -= fill;
         }
     }
 
-    if (remaining > 0) return std::nullopt; // insufficient liquidity
+    if (remaining > 0) return nullopt; // insufficient liquidity
 
     return weighted_sum / static_cast<double>(qty);
 }
 
-BookSnapshot OrderBook::snapshot(std::size_t levels) const {
+BookSnapshot OrderBook::snapshot(size_t levels) const {
     BookSnapshot snap;
     snap.symbol    = symbol_;
-    snap.timestamp = std::chrono::high_resolution_clock::now().time_since_epoch();
+    snap.timestamp = chrono::high_resolution_clock::now().time_since_epoch();
 
-    std::size_t n = 0;
+    size_t n = 0;
     for (auto& [p, lvl] : bids_) {
         if (n++ >= levels) break;
         snap.bids.emplace_back(p, lvl.total_quantity);

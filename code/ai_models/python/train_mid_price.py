@@ -81,7 +81,6 @@ def compute_features(wide: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
             continue
 
         row = wide.loc[ts]
-        wide.loc[ts_index[i - 1]]
 
         b1 = float(row.get("bid_p1", 0.0))
         a1 = float(row.get("ask_p1", 0.0))
@@ -265,15 +264,23 @@ def main():
     for r in rows:
         print(row_str(r))
 
+    # Fold the standardisation (mu, std) into the weights and bias so the
+    # exported model operates directly on the raw FEATURE_DIM features that the
+    # C++ FeatureExtractor produces (it does not standardise):
+    #   pred = sum_j ((x_j - mu_j) / std_j) * w_j + b
+    #        = sum_j (w_j / std_j) * x_j + (b - sum_j w_j * mu_j / std_j)
+    w_raw = w / std
+    b_raw = float(b - float(np.dot(w_raw, mu)))
+
     out = {
         "model": "MidPricePredictor",
         "version": "1.0",
         "feature_dim": FEATURE_DIM,
         "learning_rate": args.lr,
         "regularisation": args.reg,
-        "bias": float(b),
+        "bias": b_raw,
         "n_updates": int(len(X_tr) * args.epochs),
-        "weights": [float(x) for x in w],
+        "weights": [float(x) for x in w_raw],
     }
     Path(args.weights).parent.mkdir(parents=True, exist_ok=True)
     with open(args.weights, "w") as f:

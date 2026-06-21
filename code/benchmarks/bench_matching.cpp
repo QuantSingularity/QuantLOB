@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 using namespace lob;
 
 // ---------------------------------------------------------------------------
@@ -23,7 +25,7 @@ static Order make_order(uint64_t  id,
                         uint64_t  qty,
                         OrderType type = OrderType::LIMIT) {
     return Order{id, side, type, price, qty, "AAPL",
-                 std::chrono::nanoseconds{0}};
+                 chrono::nanoseconds{0}};
 }
 
 // ---------------------------------------------------------------------------
@@ -98,7 +100,7 @@ static void BM_OrderBookSnapshot(benchmark::State& state) {
 
     for (auto _ : state)
         benchmark::DoNotOptimize(
-            book.snapshot(static_cast<std::size_t>(state.range(0))));
+            book.snapshot(static_cast<size_t>(state.range(0))));
 }
 BENCHMARK(BM_OrderBookSnapshot)->Range(1, 20)->Unit(benchmark::kNanosecond);
 
@@ -158,7 +160,7 @@ static void BM_MatchingEngineLimitResting(benchmark::State& state) {
         for (int i = 0; i < state.range(0); ++i) {
             auto o = make_order(id++, Side::BUY,
                                 99.0 - static_cast<double>(i % 5), 100);
-            benchmark::DoNotOptimize(engine.submit_order(std::move(o)));
+            benchmark::DoNotOptimize(engine.submit_order(move(o)));
         }
     }
     state.SetItemsProcessed(state.iterations() * state.range(0));
@@ -175,7 +177,7 @@ static void BM_MatchingEngineFullMatch(benchmark::State& state) {
         engine.submit_order(make_order(id++, Side::SELL, 100.0, 10'000'000));
         for (int i = 0; i < state.range(0); ++i) {
             auto o = make_order(id++, Side::BUY, 100.0, 100, OrderType::MARKET);
-            benchmark::DoNotOptimize(engine.submit_order(std::move(o)));
+            benchmark::DoNotOptimize(engine.submit_order(move(o)));
         }
     }
     state.SetItemsProcessed(state.iterations() * state.range(0));
@@ -200,7 +202,7 @@ static void BM_MatchingEngineMultiLevelSweep(benchmark::State& state) {
         auto o = make_order(id++, Side::BUY,
                             100.0 + static_cast<double>(levels) * 0.01,
                             static_cast<uint64_t>(100 * levels));
-        benchmark::DoNotOptimize(engine.submit_order(std::move(o)));
+        benchmark::DoNotOptimize(engine.submit_order(move(o)));
     }
     state.SetItemsProcessed(state.iterations() * levels);
 }
@@ -215,7 +217,7 @@ static void BM_CancelViaEngine(benchmark::State& state) {
         state.PauseTiming();
         MatchingEngine engine;
         engine.register_symbol("AAPL");
-        std::vector<uint64_t> ids;
+        vector<uint64_t> ids;
         ids.reserve(N);
         for (int i = 0; i < N; ++i) {
             auto oid = id++;
@@ -248,7 +250,7 @@ static void BM_IOCOrder(benchmark::State& state) {
         auto o = make_order(id++, Side::BUY, 200.0,
                             static_cast<uint64_t>(50 * state.range(0) + 1),
                             OrderType::IOC);
-        benchmark::DoNotOptimize(engine.submit_order(std::move(o)));
+        benchmark::DoNotOptimize(engine.submit_order(move(o)));
     }
     state.SetItemsProcessed(state.iterations() * state.range(0));
 }
@@ -266,7 +268,7 @@ static void BM_FOKAccepted(benchmark::State& state) {
         auto o = make_order(id++, Side::BUY, 100.0,
                             static_cast<uint64_t>(state.range(0)),
                             OrderType::FOK);
-        benchmark::DoNotOptimize(engine.submit_order(std::move(o)));
+        benchmark::DoNotOptimize(engine.submit_order(move(o)));
     }
     state.SetItemsProcessed(state.iterations() * state.range(0));
 }
@@ -294,8 +296,8 @@ BENCHMARK(BM_RingBufferPushPop)->Range(64, 8192)->Unit(benchmark::kNanosecond);
 
 static void BM_MemoryPoolAllocDealloc(benchmark::State& state) {
     MemoryPool<Order, 4096> pool;
-    std::vector<Order*> ptrs;
-    ptrs.reserve(static_cast<std::size_t>(state.range(0)));
+    vector<Order*> ptrs;
+    ptrs.reserve(static_cast<size_t>(state.range(0)));
 
     for (auto _ : state) {
         state.PauseTiming();
@@ -319,11 +321,11 @@ BENCHMARK(BM_MemoryPoolAllocDealloc)->Range(64, 2048)->Unit(benchmark::kNanoseco
 // ---------------------------------------------------------------------------
 
 static void BM_LatencyRecorderRecord(benchmark::State& state) {
-    LatencyRecorder rec{static_cast<std::size_t>(state.range(0)) + 1};
+    LatencyRecorder rec{static_cast<size_t>(state.range(0)) + 1};
     for (auto _ : state) {
         rec.clear();
         for (int i = 0; i < state.range(0); ++i)
-            rec.record(std::chrono::nanoseconds{static_cast<int64_t>(i)});
+            rec.record(chrono::nanoseconds{static_cast<int64_t>(i)});
         benchmark::DoNotOptimize(rec.count());
     }
     state.SetItemsProcessed(state.iterations() * state.range(0));
@@ -333,7 +335,7 @@ BENCHMARK(BM_LatencyRecorderRecord)->Range(100, 100000)->Unit(benchmark::kMicros
 static void BM_LatencyRecorderPercentiles(benchmark::State& state) {
     LatencyRecorder rec;
     for (int i = 1; i <= state.range(0); ++i)
-        rec.record(std::chrono::nanoseconds{static_cast<int64_t>(i)});
+        rec.record(chrono::nanoseconds{static_cast<int64_t>(i)});
 
     for (auto _ : state) {
         benchmark::DoNotOptimize(rec.p50_ns());

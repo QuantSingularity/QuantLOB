@@ -7,15 +7,17 @@
 #include <deque>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
 /// Number of elements in every FeatureVector produced by FeatureExtractor.
-static constexpr std::size_t FEATURE_DIM = 40;
+static constexpr size_t FEATURE_DIM = 40;
 
 /// A feature vector plus a validity flag that is false during the warm-up window.
 struct FeatureVector {
-    std::vector<double> data;
+    vector<double> data;
     bool                valid{false};
 
     FeatureVector() : data(FEATURE_DIM, 0.0) {}
@@ -57,8 +59,8 @@ private:
     int window_;
     int trade_window_;
 
-    std::deque<double>      mid_history_;
-    std::deque<TradeRecord> trade_history_;
+    deque<double>      mid_history_;
+    deque<TradeRecord> trade_history_;
 
     static double safe_div(double num, double den) noexcept {
         return (den == 0.0) ? 0.0 : num / den;

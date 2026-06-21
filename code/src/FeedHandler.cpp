@@ -11,6 +11,8 @@
 #include <string>
 #include <thread>
 
+using namespace std;
+
 namespace lob {
 
 FeedHandler::FeedHandler(MatchingEngine& engine)
@@ -33,20 +35,20 @@ void FeedHandler::configure(const FeedConfig& cfg) {
 //   [5] direction   — 1=buy, -1=sell
 // ---------------------------------------------------------------------------
 
-std::vector<LOBSTEREvent> FeedHandler::load_lobster_csv(
-    const std::filesystem::path& message_file) {
+vector<LOBSTEREvent> FeedHandler::load_lobster_csv(
+    const filesystem::path& message_file) {
 
-    std::vector<LOBSTEREvent> events;
-    std::ifstream             file(message_file);
+    vector<LOBSTEREvent> events;
+    ifstream             file(message_file);
     if (!file.is_open())
-        throw std::runtime_error("FeedHandler: cannot open: " +
+        throw runtime_error("FeedHandler: cannot open: " +
                                  message_file.string());
 
-    std::string line;
-    std::size_t line_num      = 0;
-    std::size_t skipped_lines = 0;
+    string line;
+    size_t line_num      = 0;
+    size_t skipped_lines = 0;
 
-    while (std::getline(file, line)) {
+    while (getline(file, line)) {
         ++line_num;
         if (line.empty()) continue;
 
@@ -59,44 +61,44 @@ std::vector<LOBSTEREvent> FeedHandler::load_lobster_csv(
             (line[0] == 'T' || line[0] == 't' || line[0] == '#'))
             continue;
 
-        std::istringstream       ss(line);
-        std::string              token;
-        std::vector<std::string> fields;
+        istringstream       ss(line);
+        string              token;
+        vector<string> fields;
         fields.reserve(6);
 
-        while (std::getline(ss, token, ','))
+        while (getline(ss, token, ','))
             fields.push_back(token);
 
         if (fields.size() < 6) {
             ++skipped_lines;
             LOB_WARN("FeedHandler", "Skipping malformed line " +
-                     std::to_string(line_num) + ": " + line);
+                     to_string(line_num) + ": " + line);
             continue;
         }
 
         try {
             LOBSTEREvent ev;
-            double ts_sec    = std::stod(fields[0]);
+            double ts_sec    = stod(fields[0]);
             auto   ts_ns     = static_cast<int64_t>(ts_sec * 1e9);
-            ev.timestamp     = std::chrono::nanoseconds{ts_ns};
-            ev.event_type    = std::stoi(fields[1]);
-            ev.order_id      = std::stoull(fields[2]);
-            ev.size          = std::stoull(fields[3]);
+            ev.timestamp     = chrono::nanoseconds{ts_ns};
+            ev.event_type    = stoi(fields[1]);
+            ev.order_id      = stoull(fields[2]);
+            ev.size          = stoull(fields[3]);
             // LOBSTER prices are integers scaled ×10000.
-            ev.price         = std::stod(fields[4]) / 10000.0;
-            ev.direction     = std::stoi(fields[5]);
+            ev.price         = stod(fields[4]) / 10000.0;
+            ev.direction     = stoi(fields[5]);
             events.push_back(ev);
-        } catch (const std::exception& ex) {
+        } catch (const exception& ex) {
             ++skipped_lines;
             LOB_WARN("FeedHandler", "Parse error at line " +
-                     std::to_string(line_num) + ": " + ex.what());
+                     to_string(line_num) + ": " + ex.what());
         }
     }
 
     LOB_INFO("FeedHandler",
-             "Loaded " + std::to_string(events.size()) +
+             "Loaded " + to_string(events.size()) +
              " events from " + message_file.string() +
-             " (skipped " + std::to_string(skipped_lines) + " lines)");
+             " (skipped " + to_string(skipped_lines) + " lines)");
     return events;
 }
 
@@ -104,11 +106,11 @@ std::vector<LOBSTEREvent> FeedHandler::load_lobster_csv(
 // LOBSTER replay
 // ---------------------------------------------------------------------------
 
-void FeedHandler::replay_lobster(const std::vector<LOBSTEREvent>& events,
-                                 const std::string&               symbol) {
+void FeedHandler::replay_lobster(const vector<LOBSTEREvent>& events,
+                                 const string&               symbol) {
     engine_.register_symbol(symbol);
 
-    std::chrono::nanoseconds prev_ts{0};
+    chrono::nanoseconds prev_ts{0};
 
     for (auto& ev : events) {
         if (event_cb_) event_cb_(ev);
@@ -119,12 +121,12 @@ void FeedHandler::replay_lobster(const std::vector<LOBSTEREvent>& events,
             prev_ts.count() > 0 &&
             ev.timestamp > prev_ts) {
             auto gap_ns = ev.timestamp - prev_ts;
-            auto delay  = std::chrono::nanoseconds{
+            auto delay  = chrono::nanoseconds{
                 static_cast<int64_t>(
                     static_cast<double>(gap_ns.count()) /
                     config_.replay_speed)};
             if (delay.count() > 0)
-                std::this_thread::sleep_for(delay);
+                this_thread::sleep_for(delay);
         }
         prev_ts = ev.timestamp;
 
@@ -154,12 +156,12 @@ void FeedHandler::replay_lobster(const std::vector<LOBSTEREvent>& events,
             case 7:
                 LOB_WARN("FeedHandler",
                          "Trading halt at " +
-                         std::to_string(ev.timestamp.count()) + " ns");
+                         to_string(ev.timestamp.count()) + " ns");
                 break;
             default:
                 LOB_DEBUG("FeedHandler",
                           "Unknown LOBSTER event type: " +
-                          std::to_string(ev.event_type));
+                          to_string(ev.event_type));
                 break;
         }
 
@@ -167,7 +169,7 @@ void FeedHandler::replay_lobster(const std::vector<LOBSTEREvent>& events,
     }
 
     LOB_INFO("FeedHandler",
-             "Replay complete: " + std::to_string(events_processed_) +
+             "Replay complete: " + to_string(events_processed_) +
              " events processed for " + symbol);
 }
 
@@ -182,32 +184,32 @@ void FeedHandler::replay_lobster(const std::vector<LOBSTEREvent>& events,
 // ---------------------------------------------------------------------------
 
 void FeedHandler::generate_synthetic(const SyntheticConfig& cfg) {
-    std::mt19937_64                         rng{cfg.seed};
-    std::exponential_distribution<double>   inter_arrival{cfg.arrival_rate};
-    std::normal_distribution<double>        price_noise{0.0, cfg.price_std};
-    std::uniform_int_distribution<uint64_t> qty_dist{cfg.min_qty, cfg.max_qty};
-    std::uniform_real_distribution<double>  uni{0.0, 1.0};
-    std::uniform_int_distribution<int>      level_dist{0, cfg.spread_ticks + 2};
+    mt19937_64                         rng{cfg.seed};
+    exponential_distribution<double>   inter_arrival{cfg.arrival_rate};
+    normal_distribution<double>        price_noise{0.0, cfg.price_std};
+    uniform_int_distribution<uint64_t> qty_dist{cfg.min_qty, cfg.max_qty};
+    uniform_real_distribution<double>  uni{0.0, 1.0};
+    uniform_int_distribution<int>      level_dist{0, cfg.spread_ticks + 2};
 
-    const std::string& symbol = config_.symbol;
+    const string& symbol = config_.symbol;
     double             mid    = cfg.mid_price;
 
     // active_ids tracks resting order IDs for random cancellation.
     // Swap-and-pop gives O(1) removal.
-    std::vector<uint64_t> active_ids;
+    vector<uint64_t> active_ids;
     active_ids.reserve(2048);
 
-    std::chrono::nanoseconds ts{0};
+    chrono::nanoseconds ts{0};
 
     for (uint64_t i = 0; i < cfg.num_events; ++i) {
-        ts += std::chrono::nanoseconds{
+        ts += chrono::nanoseconds{
             static_cast<int64_t>(inter_arrival(rng) * 1e9)};
 
         // --- Cancel event ---
         if (!active_ids.empty() && uni(rng) < cfg.cancel_rate) {
-            std::uniform_int_distribution<std::size_t> idx_dist{
+            uniform_int_distribution<size_t> idx_dist{
                 0, active_ids.size() - 1};
-            std::size_t idx = idx_dist(rng);
+            size_t idx = idx_dist(rng);
             uint64_t    cid = active_ids[idx];
 
             // Remove from active_ids regardless of whether the cancel
@@ -223,15 +225,15 @@ void FeedHandler::generate_synthetic(const SyntheticConfig& cfg) {
         // --- New limit order ---
         Side side = (uni(rng) < 0.5) ? Side::BUY : Side::SELL;
 
-        // Place within a few ticks of the mid.  std::abs ensures we always
+        // Place within a few ticks of the mid.  abs ensures we always
         // move away from mid (no crossed orders from the generator itself).
         double offset = static_cast<double>(level_dist(rng)) * cfg.tick_size +
-                        std::abs(price_noise(rng));
+                        abs(price_noise(rng));
         double raw_price = (side == Side::BUY) ? mid - offset : mid + offset;
 
         // Snap to tick grid and enforce a positive minimum.
-        double price = std::round(raw_price / cfg.tick_size) * cfg.tick_size;
-        price        = std::max(price, cfg.tick_size);
+        double price = round(raw_price / cfg.tick_size) * cfg.tick_size;
+        price        = max(price, cfg.tick_size);
 
         uint64_t qty = qty_dist(rng);
         uint64_t oid = next_order_id_++;
@@ -251,7 +253,7 @@ void FeedHandler::generate_synthetic(const SyntheticConfig& cfg) {
             // Exponential moving average towards the traded price, plus noise.
             mid = mid + 0.05 * (last_price - mid) +
                   price_noise(rng) * cfg.tick_size * 0.5;
-            mid = std::max(mid, cfg.tick_size);
+            mid = max(mid, cfg.tick_size);
         }
 
         ++events_processed_;
@@ -263,11 +265,11 @@ void FeedHandler::generate_synthetic(const SyntheticConfig& cfg) {
 // ---------------------------------------------------------------------------
 
 void FeedHandler::set_event_callback(EventCallback cb) {
-    event_cb_ = std::move(cb);
+    event_cb_ = move(cb);
 }
 
 void FeedHandler::set_order_callback(OrderCallback cb) {
-    order_cb_ = std::move(cb);
+    order_cb_ = move(cb);
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +277,7 @@ void FeedHandler::set_order_callback(OrderCallback cb) {
 // ---------------------------------------------------------------------------
 
 Order FeedHandler::build_order_from_event(const LOBSTEREvent& ev,
-                                          const std::string&  symbol) const {
+                                          const string&  symbol) const {
     // LOBSTER direction: 1 = buy, -1 = sell.
     Side side = (ev.direction == 1) ? Side::BUY : Side::SELL;
     return Order{ev.order_id, side, OrderType::LIMIT,

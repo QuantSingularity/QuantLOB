@@ -13,6 +13,8 @@
 #include <numeric>
 #include <vector>
 
+using namespace std;
+
 using namespace lob;
 using namespace lob::ai_models;
 
@@ -24,7 +26,7 @@ static BookSnapshot make_snap(double bid1, double ask1,
                                uint64_t bq1 = 100, uint64_t aq1 = 100) {
     BookSnapshot s;
     s.symbol    = "TEST";
-    s.timestamp = std::chrono::nanoseconds{0};
+    s.timestamp = chrono::nanoseconds{0};
     s.bids = {{bid1, bq1}, {bid1 - 0.01, bq1 * 2}, {bid1 - 0.02, bq1 * 3},
               {bid1 - 0.03, bq1},     {bid1 - 0.04, bq1},     {bid1 - 0.05, bq1}};
     s.asks = {{ask1, aq1}, {ask1 + 0.01, aq1 * 2}, {ask1 + 0.02, aq1 * 3},
@@ -396,7 +398,7 @@ TEST_CASE("MLPipeline: on_trade does not crash", "[ml][pipeline]") {
     t.sell_order_id = 1;
     t.price         = 100.0;
     t.quantity      = 50;
-    t.timestamp     = std::chrono::nanoseconds{0};
+    t.timestamp     = chrono::nanoseconds{0};
     REQUIRE_NOTHROW(pipeline.on_trade(t));
 }
 
@@ -438,9 +440,9 @@ TEST_CASE("MLPipeline: integrates with MatchingEngine via callbacks", "[ml][pipe
     // Submit crossing orders to trigger trade callback
     engine.register_symbol("AAPL");
     Order sell{1, Side::SELL, OrderType::LIMIT, 100.0, 50, "AAPL",
-               std::chrono::nanoseconds{0}};
+               chrono::nanoseconds{0}};
     Order buy {2, Side::BUY,  OrderType::LIMIT, 100.0, 50, "AAPL",
-               std::chrono::nanoseconds{1}};
+               chrono::nanoseconds{1}};
     engine.submit_order(sell);
     engine.submit_order(buy); // triggers trade callback
 

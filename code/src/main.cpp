@@ -15,13 +15,15 @@
 #include <csignal>
 #include <string>
 
-static std::atomic<bool> g_shutdown{false};
+using namespace std;
+
+static atomic<bool> g_shutdown{false};
 static void handle_signal(int) noexcept {
-    g_shutdown.store(true, std::memory_order_relaxed);
+    g_shutdown.store(true, memory_order_relaxed);
 }
 
 static void print_usage(const char* prog) {
-    std::cout
+    cout
         << "Usage: " << prog << " [OPTIONS]\n\n"
         << "Options:\n"
         << "  --symbol SYM         Instrument symbol (default: AAPL)\n"
@@ -44,28 +46,28 @@ static void print_usage(const char* prog) {
         << "Examples:\n"
         << "  " << prog << "\n"
         << "  " << prog << " --symbol TSLA --events 1000000 --out-dir /tmp/lob\n"
-        << "  " << prog << " --lobster data/sample/messages.csv"
+        << "  " << prog << " --lobster code/data/sample/messages.csv"
                            " --export-snapshot --out-dir out\n"
         << "  " << prog << " --events 200000 --export-latency"
                            " --export-trades --out-dir out\n";
 }
 
-static std::string get_arg(int argc, char* argv[], const std::string& flag,
-                            const std::string& def = "") {
+static string get_arg(int argc, char* argv[], const string& flag,
+                            const string& def = "") {
     for (int i = 1; i < argc - 1; ++i)
-        if (std::string(argv[i]) == flag) return argv[i + 1];
+        if (string(argv[i]) == flag) return argv[i + 1];
     return def;
 }
 
-static bool has_flag(int argc, char* argv[], const std::string& flag) {
+static bool has_flag(int argc, char* argv[], const string& flag) {
     for (int i = 1; i < argc; ++i)
-        if (std::string(argv[i]) == flag) return true;
+        if (string(argv[i]) == flag) return true;
     return false;
 }
 
 int main(int argc, char* argv[]) {
-    std::signal(SIGINT,  handle_signal);
-    std::signal(SIGTERM, handle_signal);
+    signal(SIGINT,  handle_signal);
+    signal(SIGTERM, handle_signal);
 
     if (has_flag(argc, argv, "--help")) {
         print_usage(argv[0]);
@@ -75,30 +77,30 @@ int main(int argc, char* argv[]) {
     // -----------------------------------------------------------------------
     // Parse CLI arguments
     // -----------------------------------------------------------------------
-    const std::string symbol       = get_arg(argc, argv, "--symbol",  "AAPL");
-    const std::string lobster_msg  = get_arg(argc, argv, "--lobster", "");
+    const string symbol       = get_arg(argc, argv, "--symbol",  "AAPL");
+    const string lobster_msg  = get_arg(argc, argv, "--lobster", "");
     const bool        realtime     = has_flag(argc, argv, "--realtime");
-    const double      speed        = std::stod(get_arg(argc, argv, "--speed",   "1.0"));
-    const uint64_t    num_events   = std::stoull(get_arg(argc, argv, "--events","500000"));
-    const double      mid_price    = std::stod(get_arg(argc, argv, "--mid",    "150.0"));
-    const double      tick_size    = std::stod(get_arg(argc, argv, "--tick",   "0.01"));
+    const double      speed        = stod(get_arg(argc, argv, "--speed",   "1.0"));
+    const uint64_t    num_events   = stoull(get_arg(argc, argv, "--events","500000"));
+    const double      mid_price    = stod(get_arg(argc, argv, "--mid",    "150.0"));
+    const double      tick_size    = stod(get_arg(argc, argv, "--tick",   "0.01"));
     const uint32_t    seed         = static_cast<uint32_t>(
-                                         std::stoul(get_arg(argc, argv, "--seed","12345")));
-    const std::size_t levels       = static_cast<std::size_t>(
-                                         std::stoul(get_arg(argc, argv, "--levels","5")));
-    const std::string out_dir      = get_arg(argc, argv, "--out-dir", "");
+                                         stoul(get_arg(argc, argv, "--seed","12345")));
+    const size_t levels       = static_cast<size_t>(
+                                         stoul(get_arg(argc, argv, "--levels","5")));
+    const string out_dir      = get_arg(argc, argv, "--out-dir", "");
     const bool        exp_trades   = has_flag(argc, argv, "--export-trades");
     const bool        exp_snap     = has_flag(argc, argv, "--export-snapshot");
     const bool        exp_lat      = has_flag(argc, argv, "--export-latency");
     const bool        exp_ts       = has_flag(argc, argv, "--export-timeseries");
-    const uint64_t    snap_interval= std::stoull(
+    const uint64_t    snap_interval= stoull(
                                          get_arg(argc, argv, "--snap-interval","1000"));
 
     // -----------------------------------------------------------------------
     // Logger
     // -----------------------------------------------------------------------
     {
-        std::string ls = get_arg(argc, argv, "--log-level", "INFO");
+        string ls = get_arg(argc, argv, "--log-level", "INFO");
         lob::LogLevel lvl = lob::LogLevel::INFO;
         if      (ls == "DEBUG") lvl = lob::LogLevel::DEBUG;
         else if (ls == "WARN")  lvl = lob::LogLevel::WARN;
@@ -109,22 +111,22 @@ int main(int argc, char* argv[]) {
     // -----------------------------------------------------------------------
     // Output directory
     // -----------------------------------------------------------------------
-    std::filesystem::path out_path;
+    filesystem::path out_path;
     if (!out_dir.empty()) {
         out_path = out_dir;
-        std::filesystem::create_directories(out_path);
+        filesystem::create_directories(out_path);
     }
 
     // -----------------------------------------------------------------------
     // Engine + latency recorder
     // -----------------------------------------------------------------------
     lob::MatchingEngine  engine;
-    lob::LatencyRecorder recorder{static_cast<std::size_t>(num_events + 1024)};
+    lob::LatencyRecorder recorder{static_cast<size_t>(num_events + 1024)};
 
     // -----------------------------------------------------------------------
     // Trade log
     // -----------------------------------------------------------------------
-    std::ofstream trade_log;
+    ofstream trade_log;
     if (exp_trades && !out_path.empty()) {
         trade_log.open(out_path / "trades.csv");
         lob::Exporter::write_trade_header(trade_log);
@@ -135,15 +137,15 @@ int main(int argc, char* argv[]) {
             lob::Exporter::write_trade(trade_log, t);
     });
 
-    engine.set_reject_callback([](uint64_t id, const std::string& reason) {
+    engine.set_reject_callback([](uint64_t id, const string& reason) {
         LOB_WARN("Engine",
-                 "Order " + std::to_string(id) + " rejected: " + reason);
+                 "Order " + to_string(id) + " rejected: " + reason);
     });
 
     // -----------------------------------------------------------------------
     // Time-series snapshot stream
     // -----------------------------------------------------------------------
-    std::ofstream ts_log;
+    ofstream ts_log;
     uint64_t      ts_event_counter = 0;
 
     if (exp_ts && !out_path.empty()) {
@@ -185,15 +187,15 @@ int main(int argc, char* argv[]) {
     // -----------------------------------------------------------------------
     // Run
     // -----------------------------------------------------------------------
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = chrono::high_resolution_clock::now();
 
     if (use_lobster) {
         try {
             auto events = feed.load_lobster_csv(lobster_msg);
-            std::cout << "Loaded " << events.size() << " LOBSTER events\n";
+            cout << "Loaded " << events.size() << " LOBSTER events\n";
             feed.replay_lobster(events, symbol);
-        } catch (const std::exception& ex) {
-            std::cerr << "Error: " << ex.what() << "\n";
+        } catch (const exception& ex) {
+            cerr << "Error: " << ex.what() << "\n";
             return EXIT_FAILURE;
         }
     } else {
@@ -211,19 +213,19 @@ int main(int argc, char* argv[]) {
             uint32_t           batch_seed  = seed;
 
             while (remaining > 0 && !g_shutdown.load()) {
-                const uint64_t batch_sz = std::min(remaining, BATCH);
+                const uint64_t batch_sz = min(remaining, BATCH);
                 lob::SyntheticConfig batch_cfg = syn;
                 batch_cfg.num_events = batch_sz;
                 batch_cfg.seed       = batch_seed++;
 
-                auto t_start = std::chrono::high_resolution_clock::now();
+                auto t_start = chrono::high_resolution_clock::now();
                 feed.generate_synthetic(batch_cfg);
-                auto t_end   = std::chrono::high_resolution_clock::now();
+                auto t_end   = chrono::high_resolution_clock::now();
 
-                auto batch_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                auto batch_ns = chrono::duration_cast<chrono::nanoseconds>(
                                     t_end - t_start).count();
                 // Record average per-event latency for this batch.
-                recorder.record(std::chrono::nanoseconds{
+                recorder.record(chrono::nanoseconds{
                     batch_ns / static_cast<int64_t>(batch_sz)});
 
                 remaining -= batch_sz;
@@ -233,7 +235,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    auto t1 = std::chrono::high_resolution_clock::now();
+    auto t1 = chrono::high_resolution_clock::now();
 
     if (g_shutdown.load())
         LOB_WARN("Main", "Shutdown signal received — results may be partial");
@@ -241,12 +243,12 @@ int main(int argc, char* argv[]) {
     // -----------------------------------------------------------------------
     // Report
     // -----------------------------------------------------------------------
-    const double   ms    = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    const double   ms    = chrono::duration<double, milli>(t1 - t0).count();
     const auto&    stats = engine.stats();
     const auto*    book  = engine.get_book(symbol);
 
-    std::cout << std::fixed << std::setprecision(2);
-    std::cout << "\n=== QuantLOB Engine Report ===\n\n"
+    cout << fixed << setprecision(2);
+    cout << "\n=== QuantLOB Engine Report ===\n\n"
               << "Symbol              : " << symbol                        << "\n"
               << "Wall time           : " << ms                            << " ms\n"
               << "Events processed    : " << feed.events_processed()       << "\n"
@@ -260,7 +262,7 @@ int main(int argc, char* argv[]) {
               << "Total notional      : " << stats.total_notional          << "\n";
 
     if (ms > 0.0)
-        std::cout << "Throughput          : "
+        cout << "Throughput          : "
                   << static_cast<uint64_t>(
                          stats.orders_processed / (ms / 1000.0))
                   << " orders/sec\n";
@@ -274,16 +276,16 @@ int main(int argc, char* argv[]) {
         const auto rsprd  = book->relative_spread();
         const auto imbal  = book->imbalance();
 
-        std::cout << "\n--- Order Book Snapshot: " << symbol << " ---\n";
-        if (bid)    std::cout << "Best bid       : " << *bid    << "\n";
-        if (ask)    std::cout << "Best ask       : " << *ask    << "\n";
-        if (mid)    std::cout << "Mid price      : " << *mid    << "\n";
-        if (spread) std::cout << "Spread         : " << *spread << "\n";
-        if (rsprd)  std::cout << "Rel. spread    : " << std::setprecision(4)
+        cout << "\n--- Order Book Snapshot: " << symbol << " ---\n";
+        if (bid)    cout << "Best bid       : " << *bid    << "\n";
+        if (ask)    cout << "Best ask       : " << *ask    << "\n";
+        if (mid)    cout << "Mid price      : " << *mid    << "\n";
+        if (spread) cout << "Spread         : " << *spread << "\n";
+        if (rsprd)  cout << "Rel. spread    : " << setprecision(4)
                               << *rsprd * 100.0 << " bps\n";
-        std::cout << std::setprecision(4)
+        cout << setprecision(4)
                   << "Imbalance      : " << imbal  << "\n"
-                  << std::setprecision(2)
+                  << setprecision(2)
                   << "Resting orders : " << book->order_count()      << "\n"
                   << "Bid levels     : " << book->level_count_bids() << "\n"
                   << "Ask levels     : " << book->level_count_asks() << "\n";
@@ -292,21 +294,21 @@ int main(int argc, char* argv[]) {
         auto bvwap = book->bid_vwap(levels);
         auto avwap = book->ask_vwap(levels);
         if (bvwap.valid)
-            std::cout << "Bid VWAP       : " << bvwap.vwap
+            cout << "Bid VWAP       : " << bvwap.vwap
                       << "  (qty " << bvwap.total_qty << ")\n";
         if (avwap.valid)
-            std::cout << "Ask VWAP       : " << avwap.vwap
+            cout << "Ask VWAP       : " << avwap.vwap
                       << "  (qty " << avwap.total_qty << ")\n";
 
-        std::cout << "\nTop " << levels << " Bids:\n"
-                  << std::setw(16) << "Price" << std::setw(14) << "Quantity\n";
+        cout << "\nTop " << levels << " Bids:\n"
+                  << setw(16) << "Price" << setw(14) << "Quantity\n";
         for (auto& [p, q] : snap.bids)
-            std::cout << std::setw(16) << p << std::setw(14) << q << "\n";
+            cout << setw(16) << p << setw(14) << q << "\n";
 
-        std::cout << "\nTop " << levels << " Asks:\n"
-                  << std::setw(16) << "Price" << std::setw(14) << "Quantity\n";
+        cout << "\nTop " << levels << " Asks:\n"
+                  << setw(16) << "Price" << setw(14) << "Quantity\n";
         for (auto& [p, q] : snap.asks)
-            std::cout << std::setw(16) << p << std::setw(14) << q << "\n";
+            cout << setw(16) << p << setw(14) << q << "\n";
 
         // ---------------------------------------------------------------
         // Exports
@@ -315,14 +317,14 @@ int main(int argc, char* argv[]) {
             if (exp_snap) {
                 auto p = out_path / (symbol + "_snapshot.csv");
                 lob::Exporter::export_snapshot(snap, p);
-                std::cout << "\nSnapshot     -> " << p << "\n";
+                cout << "\nSnapshot     -> " << p << "\n";
             }
             if (exp_lat && recorder.count() > 0) {
                 auto p = out_path / "latency.csv";
                 lob::Exporter::export_latency(recorder, p);
                 auto ps = out_path / "latency_summary.txt";
                 lob::Exporter::export_latency_summary(recorder, ps);
-                std::cout << "Latency      -> " << p
+                cout << "Latency      -> " << p
                           << "  (" << recorder.count() << " samples)\n"
                           << "  mean=" << static_cast<uint64_t>(recorder.mean_ns()) << "ns"
                           << "  p50="  << recorder.p50_ns()  << "ns"
@@ -332,14 +334,14 @@ int main(int argc, char* argv[]) {
             {
                 auto p = out_path / "stats.txt";
                 lob::Exporter::export_stats(stats, p);
-                std::cout << "Stats        -> " << p << "\n";
+                cout << "Stats        -> " << p << "\n";
             }
             if (exp_ts && ts_log.is_open())
-                std::cout << "Time-series  -> "
+                cout << "Time-series  -> "
                           << (out_path / "lob_timeseries.csv") << "\n";
         }
     }
 
-    std::cout << "\n";
+    cout << "\n";
     return EXIT_SUCCESS;
 }

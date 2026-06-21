@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
@@ -28,10 +30,10 @@ public:
     void update(const FeatureVector& fv, double actual_delta);
 
     /// Load weights from a JSON file exported by train_mid_price.py.
-    bool load_weights(const std::string& path);
+    bool load_weights(const string& path);
 
     /// Save current weights to a JSON file.
-    bool save_weights(const std::string& path) const;
+    bool save_weights(const string& path) const;
 
     /// Zero all weights (reset to untrained state).
     void reset() noexcept;
@@ -41,7 +43,7 @@ public:
 
 private:
     MidPricePredictorConfig cfg_;
-    std::vector<double>     weights_;
+    vector<double>     weights_;
     double                  bias_;
     uint64_t                n_updates_;
 };

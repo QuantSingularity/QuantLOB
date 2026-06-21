@@ -1,5 +1,7 @@
 #include "lob/ai_models/MLPipeline.hpp"
 
+using namespace std;
+
 namespace lob {
 namespace ai_models {
 
