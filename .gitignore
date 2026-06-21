@@ -1,3 +1,6 @@
+# =========================
+# C++ / CMake
+# =========================
 build/
 cmake-build-*/
 .cmake/
@@ -7,50 +10,114 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
+
 *.a
 *.so
 *.dll
 *.lib
 *.exe
+
 quantlob
 quantlob_tests
 quantlob_bench
+quantlob_server
 
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
-.idea/
-.vscode/
-*.user
-*.suo
-*.VC.db
-*.VC.opendb
-
+# Object / Coverage Files
 *.o
 *.d
 *.gcno
 *.gcda
 *.gcov
 
-code/data/sample/*.csv
-code/data/sample/*.txt
-!code/data/sample/.gitkeep
-
 compile_commands.json
 .cache/
 
-# Output exports
-out/
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Docker
-.dockerignore
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
 
+# Python Packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Type Checkers / Linters
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Python Version Managers
+.python-version
+
+# =========================
 # Frontend
+# =========================
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
 
-# Server binary + vendored build artifacts
-quantlob_server
+# =========================
+# Data Samples
+# =========================
+code/data/sample/*.csv
+code/data/sample/*.txt
+!code/data/sample/.gitkeep
+
+# Output Exports
+out/
+
+# =========================
+# Docker
+# =========================
+.dockerignore
+
+# =========================
+# IDE / Editor
+# =========================
+.idea/
+.vscode/
+
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+*.swp
+*.swo
+*~
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
