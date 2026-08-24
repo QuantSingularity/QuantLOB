@@ -1,38 +1,95 @@
 # QuantLOB
 
-A high-performance limit order book simulator. The core matching engine is modern
-C++20, exposed through an interactive CLI, a JSON REST API, and a modern React and
-TypeScript web terminal. Price-time priority matching, synthetic and LOBSTER feed
-replay, nanosecond latency profiling, and an online machine learning pipeline are
-all implemented from first principles in C++.
+![CI Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/QuantLOB/ci.yml?branch=main&label=CI&logo=github)
 
-QuantLOB is built as a portfolio piece for quantitative and low-latency engineering
-roles. The emphasis is on a correct, well-tested matching core and a clean
-architecture rather than on breadth of half-finished features. Every simplifying
-assumption is stated plainly in the Limitations table rather than hidden.
+## High-Performance Limit Order Book Simulator
 
-|                 |                                                                                      |
-| --------------- | ------------------------------------------------------------------------------------ |
-| **Language**    | C++20 (engine), TypeScript + React (web)                                             |
-| **Interfaces**  | CLI simulator, REST API, web terminal                                                |
-| **Core**        | OrderBook, MatchingEngine, FeedHandler, Latency, Exporter                            |
-| **Order types** | LIMIT, MARKET, IOC, FOK                                                              |
-| **ML module**   | FeatureExtractor, MidPricePredictor, OrderFlowPredictor, AnomalyDetector, MLPipeline |
-| **Feeds**       | Synthetic Poisson order flow and LOBSTER message replay                              |
-| **Tests**       | 131 unit tests, all passing via CTest (Catch2)                                       |
-| **Build**       | CMake (engine), Vite (frontend), Docker (full stack)                                 |
+QuantLOB is a limit order book simulator with a matching engine written from first principles in modern C++20, exposed through an interactive CLI, a JSON REST API, and a React and TypeScript web terminal. Price-time priority matching, synthetic and LOBSTER feed replay, nanosecond latency profiling, and an online machine learning pipeline are all implemented in C++, not delegated to an external library, and the engine compiles once into two static libraries shared by every interface.
 
-## Capabilities
+## Table of Contents
 
-| Module          | What it does                                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Order Book      | Price-time priority book with best bid/ask/mid/spread, relative spread, imbalance, per-side VWAP, market-impact estimate, and top-N snapshots |
-| Matching Engine | LIMIT, MARKET, IOC and FOK crossing with trade, reject and fill callbacks, plus cumulative engine statistics                                  |
-| Feed Handler    | Synthetic Poisson order flow with Gaussian price noise, and LOBSTER message CSV replay with optional real-time pacing                         |
-| Latency         | Per-sample recorder with mean, stddev, min, max and p50/p90/p99/p99.9, plus an RAII scoped timer                                              |
-| ML Pipeline     | A 40-dimension feature extractor, online mid-price and order-flow predictors, and an EWMA anomaly detector, orchestrated per tick             |
-| Exporter        | Snapshot, trade log, latency samples and summary, engine stats, and time-series CSVs consumed by the Python tools                             |
-| Interfaces      | All of the above over a REST API and a live web terminal with a depth ladder and charts                                                       |
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Feature Status](#feature-status)
+- [Technology Stack](#technology-stack)
+- [Architecture](#architecture)
+- [Installation and Setup](#installation-and-setup)
+- [Running the Stack](#running-the-stack)
+- [API Surface](#api-surface)
+- [Testing](#testing)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Overview
+
+QuantLOB is built as a portfolio piece for quantitative and low-latency engineering roles. The emphasis is on a correct, well-tested matching core and a clean architecture rather than on breadth of half-finished features, and every simplifying assumption is stated plainly in the Limitations section rather than hidden. All 131 unit tests pass via CTest (verified: 131 `TEST_CASE` macros in the source), and CI runs a genuine four-way build matrix (GCC and Clang, Release and Debug, with AddressSanitizer on the Clang Debug leg) plus a separate UndefinedBehaviorSanitizer job and a live smoke test that starts the REST server and calls its real endpoints.
+
+## Project Structure
+
+```
+QuantLOB/
+├── code/
+│   ├── include/lob/                # Core engine headers
+│   │   ├── Order.hpp               # Order, Trade, Side/OrderType/OrderStatus, as_string
+│   │   ├── OrderBook.hpp           # Price-time priority book, snapshot, metrics, VWAP
+│   │   ├── MatchingEngine.hpp      # LIMIT/MARKET/IOC/FOK matching, stats, callbacks
+│   │   ├── FeedHandler.hpp         # Synthetic and LOBSTER feeds
+│   │   ├── Latency.hpp             # Latency recorder and scoped timer
+│   │   ├── Exporter.hpp            # CSV and text exporters
+│   │   ├── Logger.hpp              # Thread-safe singleton logger
+│   │   ├── MemoryPool.hpp          # Lock-free fixed-capacity pool
+│   │   └── RingBuffer.hpp          # Single-producer/single-consumer ring buffer
+│   ├── src/                        # Engine implementation (static lib quantlob_core)
+│   ├── server/                     # REST API server (cpp-httplib + nlohmann/json)
+│   ├── third_party/                # Vendored httplib and nlohmann/json (left untouched)
+│   ├── tests/                      # Catch2 unit tests (core)
+│   ├── benchmarks/                 # Google Benchmark suite
+│   ├── data/sample/                # LOBSTER CSV directory (generated, not committed)
+│   └── ai_models/                  # Machine learning module (static lib quantlob_ml_core)
+│       ├── include/lob/ai_models/  # ML public headers
+│       ├── src/                    # ML implementation
+│       ├── python/                 # Offline training and evaluation scripts
+│       └── tests/                  # ML unit tests
+├── frontend/                       # React + TypeScript + Vite web terminal
+├── infrastructure/
+│   ├── cmake/                      # Compiler warning and sanitizer helpers
+│   └── docker/                     # Engine image, full-stack image, and compose files
+├── scripts/
+│   ├── python/                     # Sample data generation and visualisation
+│   └── shell/                      # Build, test and full-stack run helpers
+├── docs/                           # Eight reference documents (see docs/README.md)
+├── CMakeLists.txt
+└── README.md
+```
+
+## Feature Status
+
+### Application tier (wired and tested)
+
+| Component           | Details                                                                                                                                                                                                                                                        |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Order book**      | Price-time priority book with best bid/ask/mid/spread, relative spread, imbalance, per-side VWAP, a market-impact estimate, and top-N snapshots.                                                                                                               |
+| **Matching engine** | LIMIT, MARKET, IOC, and FOK crossing with trade, reject, and fill callbacks, plus cumulative engine statistics. Crossing is strict price-time priority: best price first, then FIFO within a price level.                                                      |
+| **Feed handler**    | Synthetic Poisson order flow with Gaussian price noise, and LOBSTER message CSV replay with optional real-time pacing.                                                                                                                                         |
+| **Latency**         | A per-sample recorder with mean, stddev, min, max, and p50/p90/p99/p99.9, plus an RAII scoped timer.                                                                                                                                                           |
+| **ML pipeline**     | A 40-dimension feature extractor, online mid-price and order-flow predictors, and an EWMA anomaly detector, orchestrated per tick. Lightweight online linear models, illustrative rather than production alpha, as the project's own limitations table states. |
+| **Exporter**        | Snapshot, trade log, latency samples and summary, engine stats, and time-series CSVs consumed by the Python tools.                                                                                                                                             |
+| **Interfaces**      | A CLI simulator, a REST API (cpp-httplib and nlohmann/json), and a live web terminal with a depth ladder and charts, all backed by the same compiled engine.                                                                                                   |
+
+## Technology Stack
+
+| Area               | Technology                                                          |
+| :----------------- | :------------------------------------------------------------------ |
+| Engine             | C++20, CMake, Ninja                                                 |
+| REST server        | cpp-httplib, nlohmann/json (both vendored under `code/third_party`) |
+| Testing            | Catch2 (131 unit tests), Google Benchmark                           |
+| Sanitizers         | AddressSanitizer, UndefinedBehaviorSanitizer                        |
+| Offline ML tooling | Python, used for training weights and visualizing exported CSVs     |
+| Web frontend       | React, TypeScript, Vite, Recharts                                   |
+| Infrastructure     | Docker, Docker Compose                                              |
+| CI/CD              | GitHub Actions                                                      |
 
 ## Architecture
 
@@ -62,215 +119,44 @@ assumption is stated plainly in the Limitations table rather than hidden.
                       +---------------------------+
 ```
 
-The engine compiles once into two static libraries (`quantlob_core` and
-`quantlob_ml_core`). The CLI simulator, the REST server, the test runner and the
-benchmark harness all link against those libraries, so there is exactly one
-implementation of every calculation.
+The engine compiles once into two static libraries (`quantlob_core` and `quantlob_ml_core`). The CLI simulator, the REST server, the test runner, and the benchmark harness all link against those libraries, so there is exactly one implementation of every calculation.
 
-## Project Structure
+Following the AlphaForge convention, every C++ translation unit declares `using namespace std;` after its includes and uses unqualified standard names (`vector`, `optional`, `chrono::nanoseconds`) rather than the `std::` prefix. The enum string helpers in `Order.hpp` are named `as_string` so they don't hide the standard numeric `to_string`.
 
-```
-QuantLOB/
-├── code/
-│   ├── include/lob/            # Core engine headers
-│   │   ├── Order.hpp           # Order, Trade, Side/OrderType/OrderStatus, as_string
-│   │   ├── OrderBook.hpp       # Price-time priority book, snapshot, metrics, VWAP
-│   │   ├── MatchingEngine.hpp  # LIMIT/MARKET/IOC/FOK matching, stats, callbacks
-│   │   ├── FeedHandler.hpp     # Synthetic and LOBSTER feeds
-│   │   ├── Latency.hpp         # Latency recorder and scoped timer
-│   │   ├── Exporter.hpp        # CSV and text exporters
-│   │   ├── Logger.hpp          # Thread-safe singleton logger
-│   │   ├── MemoryPool.hpp      # Lock-free fixed-capacity pool
-│   │   └── RingBuffer.hpp      # Single-producer/single-consumer ring buffer
-│   ├── src/                    # Engine implementation (static lib quantlob_core)
-│   ├── server/                 # REST API server (cpp-httplib + nlohmann/json)
-│   ├── third_party/            # Vendored httplib and nlohmann/json (left untouched)
-│   ├── tests/                  # Catch2 unit tests (core)
-│   ├── benchmarks/             # Google Benchmark suite
-│   ├── data/sample/            # LOBSTER CSV directory (generated, not committed)
-│   └── ai_models/              # Machine learning module (static lib quantlob_ml_core)
-│       ├── include/lob/ai_models/  # ML public headers
-│       ├── src/                # ML implementation
-│       ├── python/             # Offline training and evaluation scripts
-│       └── tests/              # ML unit tests
-├── frontend/                   # React + TypeScript + Vite web terminal
-├── infrastructure/
-│   ├── cmake/                  # Compiler warning and sanitizer helpers
-│   └── docker/                 # Engine image, full-stack image, and compose files
-├── scripts/
-│   ├── python/                 # Sample data generation and visualisation
-│   └── shell/                  # Build, test and full-stack run helpers
-├── docs/                       # Eight reference documents (see docs/README.md)
-├── CMakeLists.txt
-└── README.md
+See the [documentation set](#documentation) for detail, starting with `docs/01_architecture.md`.
+
+## Installation and Setup
+
+Prerequisites: a C++20 compiler (GCC 12+ or Clang 14+), CMake, and Node.js 20+ for the frontend.
+
+```bash
+git clone https://github.com/quantsingularity/QuantLOB.git
+cd QuantLOB
+
+# Engine
+cmake -B build -DQUANTLOB_BUILD_TESTS=ON -DQUANTLOB_BUILD_BENCHMARKS=ON -DQUANTLOB_BUILD_MAIN=ON
+cmake --build build --parallel
+
+# Frontend
+cd frontend && npm install && cd ..
 ```
 
-## Matching engine
+## Running the Stack
 
-| Order type | Behaviour                                                                              |
-| ---------- | -------------------------------------------------------------------------------------- |
-| LIMIT      | Cross against the opposing side, then rest the remainder on the book                   |
-| MARKET     | Cross with no price constraint; discard any unfilled remainder                         |
-| IOC        | Cross immediately, then cancel any remainder (immediate-or-cancel)                     |
-| FOK        | Reject unless the full quantity is available; otherwise fill completely (fill-or-kill) |
+```bash
+# CLI simulator, synthetic feed
+./build/quantlob --events 500000 --export-trades --out-dir out
 
-Crossing is strict price-time priority: best price first, then FIFO within a price
-level. Aggressors and passive orders both fire fill callbacks, and every trade,
-rejection and fill is reported through optional engine callbacks.
+# REST server (needs the absolute path to the built frontend for static hosting)
+./build/quantlob_server 8123 "$(pwd)/frontend/dist"
 
-## Order book analytics
-
-| Method                                           | Description                                                           |
-| ------------------------------------------------ | --------------------------------------------------------------------- |
-| `best_bid` / `best_ask` / `mid_price` / `spread` | Basic top-of-book queries (each optional, empty if the side is empty) |
-| `relative_spread`                                | Spread as a fraction of the mid price                                 |
-| `imbalance`                                      | `(bid_depth - ask_depth) / (bid_depth + ask_depth)`                   |
-| `bid_vwap` / `ask_vwap`                          | Volume-weighted average price over the top N levels                   |
-| `estimate_market_impact`                         | Estimated average fill price for a hypothetical market order          |
-| `available_qty_at_price`                         | Cumulative depth at or better than a given price                      |
-| `snapshot`                                       | Top-N depth ladder (bids descending, asks ascending)                  |
-
-## Machine learning module
-
-| Model              | Algorithm                        | Task                                         |
-| ------------------ | -------------------------------- | -------------------------------------------- |
-| FeatureExtractor   | Rolling microstructure analytics | A 40-dimension feature vector from LOB state |
-| MidPricePredictor  | Online ridge regression (SGD)    | Predict the next mid-price change            |
-| OrderFlowPredictor | Online logistic regression (SGD) | Predict the next order direction (BUY/SELL)  |
-| AnomalyDetector    | EWMA z-score                     | Flag abnormal LOB states                     |
-| MLPipeline         | Orchestrator                     | Run every model once per book tick           |
-
-Offline trainers under `code/ai_models/python` consume the exported time-series and
-trade CSVs and write weight JSON files loadable by the C++ predictors. The
-mid-price trainer folds its internal feature standardisation into the saved
-weights, so the exported model operates directly on the raw features the C++
-`FeatureExtractor` produces.
-
-## Modern C++ used
-
-| Feature                             | Where it appears                                                  |
-| ----------------------------------- | ----------------------------------------------------------------- |
-| `std::optional`                     | Top-of-book values that may not exist (best bid/ask, mid, spread) |
-| `std::map` with custom comparator   | Bid levels (descending) and ask levels (ascending)                |
-| `std::list` per price level         | FIFO time priority within a price                                 |
-| `std::function` callbacks           | Trade, reject and fill hooks on the engine                        |
-| `<atomic>` and CAS                  | Lock-free free-stack in `MemoryPool`                              |
-| `std::chrono` high-resolution clock | Nanosecond latency measurement                                    |
-| `using namespace std;`              | Every translation unit (see Code style)                           |
-
-## Prerequisites
-
-| Tool          | Version              | Purpose                                         |
-| ------------- | -------------------- | ----------------------------------------------- |
-| C++ compiler  | GCC 13+ or Clang 16+ | Build the engine (full C++20)                   |
-| CMake         | 3.20+                | Configure and build                             |
-| Node.js + npm | 18+                  | Build the web terminal                          |
-| Python + pip  | 3.9+                 | Sample data, visualisation, offline ML training |
-
-## Building
-
-### Engine, server, tests and benchmarks
-
-```
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-```
-
-This produces four binaries in `build/`:
-
-| Binary            | Purpose                             |
-| ----------------- | ----------------------------------- |
-| `quantlob`        | Synthetic and LOBSTER CLI simulator |
-| `quantlob_server` | REST API and static web host        |
-| `quantlob_tests`  | Catch2 unit test runner             |
-| `quantlob_bench`  | Google Benchmark harness            |
-
-Tests and benchmarks pull Catch2 and Google Benchmark via CMake FetchContent.
-Run the tests with `ctest --output-on-failure` from `build/`.
-
-### CMake options
-
-| Option                      | Default | Description                                    |
-| --------------------------- | ------- | ---------------------------------------------- |
-| `QUANTLOB_BUILD_TESTS`      | ON      | Catch2 test binary                             |
-| `QUANTLOB_BUILD_BENCHMARKS` | ON      | Google Benchmark binary                        |
-| `QUANTLOB_BUILD_MAIN`       | ON      | CLI simulator                                  |
-| `QUANTLOB_BUILD_SERVER`     | ON      | REST API server                                |
-| `QUANTLOB_BUILD_AI_MODELS`  | ON      | ML module (FeatureExtractor, models, pipeline) |
-| `QUANTLOB_ENABLE_ASAN`      | OFF     | AddressSanitizer                               |
-| `QUANTLOB_ENABLE_TSAN`      | OFF     | ThreadSanitizer                                |
-| `QUANTLOB_ENABLE_UBSAN`     | OFF     | UndefinedBehaviorSanitizer                     |
-| `QUANTLOB_ENABLE_LTO`       | OFF     | Link-time optimisation                         |
-
-### Frontend
-
-```
-cd frontend
-npm install
-npm run build        # outputs to frontend/dist
-```
-
-### Run everything
-
-| Goal                 | Command                                                                           | Result                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Full stack           | `scripts/shell/run_stack.sh`                                                      | Builds the frontend and server if needed, serves the API and web terminal at `http://localhost:8080` |
-| Engine + tests       | `scripts/shell/build.sh && (cd build && ctest)`                                   | Builds every target and runs the test suite                                                          |
-| Synthetic run + plot | `scripts/shell/run_synthetic.sh`                                                  | Runs a simulation, exports CSVs, and renders an order-book chart                                     |
-| Frontend dev server  | `cd frontend && npm run dev`                                                      | Vite on port 5173, proxying `/api` to the backend                                                    |
-| Docker (full stack)  | `docker compose -f infrastructure/docker/docker-compose.fullstack.yml up --build` | Builds and serves the whole stack in a container                                                     |
-
-For frontend hot reload, run the API and the Vite dev server side by side:
-
-```
-./build/quantlob_server 8080 frontend/dist &
+# Frontend dev server
 cd frontend && npm run dev
 ```
 
-## Web terminal and REST API
+Or use the helper script for the full stack (engine build, frontend build, and server) in one step: `scripts/shell/run_stack.sh`. See `docs/03_build_and_configuration.md` for CMake options and `infrastructure/docker/` for the containerized setup.
 
-The same server process serves the built frontend and the API on one port. The web
-terminal has two workspaces: an **Order Book** view that drives a live price-time
-priority book (seed liquidity, submit LIMIT/MARKET/IOC/FOK orders, cancel, and watch
-the depth ladder, cumulative depth profile, trades and ML signals update against real
-fills), and a **Simulation Lab** that runs a synthetic event stream and charts the
-mid-price path, imbalance, per-order latency distribution and ML signal series.
-
-All responses are JSON. Errors return an `{ "error": "..." }` body with an
-appropriate status code.
-
-| Method | Path                  | Description                                                |
-| ------ | --------------------- | ---------------------------------------------------------- |
-| GET    | `/api/health`         | Status, version, active symbol, supported order types      |
-| GET    | `/api/book?levels=N`  | Live snapshot: depth ladder, metrics, stats, ML signal     |
-| GET    | `/api/trades?limit=N` | Recent trades, newest first                                |
-| GET    | `/api/stats`          | Cumulative engine statistics                               |
-| POST   | `/api/order`          | Submit an order; returns the match result and updated book |
-| POST   | `/api/cancel`         | Cancel a resting order by id                               |
-| POST   | `/api/seed`           | Populate the live book with a synthetic run                |
-| POST   | `/api/reset`          | Clear the live book and stats                              |
-| POST   | `/api/simulate`       | Run a synthetic simulation and return analytics            |
-
-### Request bodies
-
-| Endpoint        | Field                                   | Example                                 | Notes                              |
-| --------------- | --------------------------------------- | --------------------------------------- | ---------------------------------- |
-| `/api/order`    | `side`                                  | `"buy"` or `"sell"`                     |                                    |
-|                 | `type`                                  | `"limit"`, `"market"`, `"ioc"`, `"fok"` | Limit orders need a price          |
-|                 | `price`                                 | `150.00`                                | Required for LIMIT                 |
-|                 | `quantity`                              | `500`                                   | Positive                           |
-| `/api/seed`     | `events`                                | `8000`                                  | Synthetic events to generate       |
-|                 | `mid` / `tick` / `seed`                 | `150` / `0.01` / `12345`                | Optional generator parameters      |
-| `/api/simulate` | `events`                                | `200000`                                | Synthetic events to run            |
-|                 | `snap_interval`                         | `2000`                                  | Events between time-series samples |
-|                 | `mid` / `tick` / `seed` / `cancel_rate` |                                         | Optional generator parameters      |
-
-The `/api/simulate` response carries the engine stats, a latency summary and
-histogram, a microstructure time series (mid, spread, imbalance, depth), an ML
-signal series (mid forecast, buy probability, anomaly score), and the final book
-snapshot, all ready for charting.
-
-## CLI reference
+### CLI reference
 
 ```
 Options:
@@ -293,36 +179,19 @@ Options:
   --help               Show this help
 ```
 
-## Data feeds
+### Data feeds
 
-QuantLOB runs on two feed types. The synthetic feed is a Poisson arrival process
-with Gaussian price noise, configurable mid, tick, arrival and cancel rates. The
-LOBSTER feed replays a message CSV in the standard LOBSTER format.
+QuantLOB runs on two feed types. The synthetic feed is a Poisson arrival process with Gaussian price noise, configurable mid, tick, arrival, and cancel rates. The LOBSTER feed replays a message CSV in the standard LOBSTER format (comma-separated, no header: time, event type, order ID, size, price scaled x10000, direction).
 
-Generate a synthetic LOBSTER-format file for testing the replay path:
-
-```
+```bash
 python3 scripts/python/generate_sample_data.py --events 10000
 # writes code/data/sample/messages.csv
 ./build/quantlob --lobster code/data/sample/messages.csv --export-snapshot --out-dir out
 ```
 
-### LOBSTER message format
+### Offline ML tools
 
-Comma-separated, no header row:
-
-| Index | Field      | Type   | Notes                                                       |
-| ----- | ---------- | ------ | ----------------------------------------------------------- |
-| 0     | time       | float  | Seconds since midnight                                      |
-| 1     | event_type | int    | 1=new, 2=partial-cancel, 3=delete, 4=exec, 5=hidden, 7=halt |
-| 2     | order_id   | uint64 | Exchange-assigned ID                                        |
-| 3     | size       | uint64 | Shares                                                      |
-| 4     | price      | int    | Integer scaled x10000 (e.g. 1000000 = 100.00)               |
-| 5     | direction  | int    | 1=buy, -1=sell                                              |
-
-## Offline ML tools
-
-```
+```bash
 # Run a simulation that exports the time-series and trade logs
 ./build/quantlob --events 200000 --export-timeseries --export-trades --out-dir out
 
@@ -336,16 +205,59 @@ python3 scripts/python/visualize_lob.py book    out/AAPL_snapshot.csv --symbol A
 python3 scripts/python/visualize_lob.py latency out/latency.csv --out out/latency.png
 ```
 
-## Code style
+## API Surface
 
-Following the AlphaForge convention, every C++ translation unit declares
-`using namespace std;` after its includes and uses unqualified standard names
-(`vector`, `optional`, `chrono::nanoseconds`) rather than the `std::` prefix. The
-enum string helpers in `Order.hpp` are named `as_string` so they do not hide the
-standard numeric `to_string`. The vendored third-party headers under
-`code/third_party` are left untouched.
+| Endpoint        | Key fields                                                                    | Notes                                       |
+| :-------------- | :---------------------------------------------------------------------------- | :------------------------------------------ |
+| `/api/order`    | `type` (`"limit"`, `"market"`, `"ioc"`, `"fok"`), `price`, `quantity`         | Price required for LIMIT orders             |
+| `/api/seed`     | `events`, plus optional `mid`, `tick`, `seed`                                 | Generates synthetic events to seed the book |
+| `/api/simulate` | `events`, `snap_interval`, plus optional `mid`, `tick`, `seed`, `cancel_rate` | Runs a full synthetic simulation            |
 
-## Limitations and simplifications
+The `/api/simulate` response carries the engine stats, a latency summary and histogram, a microstructure time series (mid, spread, imbalance, depth), an ML signal series (mid forecast, buy probability, anomaly score), and the final book snapshot, all ready for charting. Full schemas are in `docs/02_api_reference.md`.
+
+## Testing
+
+```bash
+cd build && ctest --output-on-failure --parallel 4
+```
+
+| Area             | What is covered                                                                                      |
+| :--------------- | :--------------------------------------------------------------------------------------------------- |
+| Order book       | Add, cancel, and modify; best bid/ask/mid/spread; imbalance; VWAP; market impact; snapshot depth     |
+| Matching         | LIMIT rest and cross, MARKET sweep, IOC remainder cancel, FOK accept and reject, price-time priority |
+| Feed handler     | Synthetic generation counts, LOBSTER parse and replay                                                |
+| Latency recorder | Mean, stddev, min, max, percentile correctness, and merge                                            |
+| Memory pool      | Raw allocate/deallocate, construct/destroy lifetime, exhaustion, non-trivial-destructor contract     |
+| Ring buffer      | Push and pop, wrap-around, full and empty states                                                     |
+| ML               | Feature dimension, predictor output ranges, anomaly detector, pipeline integration with the engine   |
+
+All 131 unit tests pass via CTest (Catch2). The REST API and the full offline ML pipeline (export, train, evaluate, visualise) were exercised end to end, and the built frontend is served by the same C++ server that answers the API. See `docs/08_testing_guide.md` for more.
+
+## CI/CD Pipeline
+
+GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on push and pull request:
+
+| Job             | What it does                                                                                                                                                                                                                                                                                         |
+| :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| build-and-test  | A 4-way matrix (GCC 12 and Clang 14, each Release and Debug, with AddressSanitizer enabled on the Clang Debug leg). Configures with CMake and Ninja, builds, runs the full CTest suite, smoke-tests the CLI binary, and starts the real REST server to smoke-test `/api/health` and `/api/simulate`. |
+| sanitizer-check | A separate Clang Debug build with UndefinedBehaviorSanitizer enabled, running the full CTest suite.                                                                                                                                                                                                  |
+| frontend        | Installs frontend dependencies, type-checks, and builds with Vite.                                                                                                                                                                                                                                   |
+
+## Documentation
+
+| Document                                                                 | Contents                                          |
+| :----------------------------------------------------------------------- | :------------------------------------------------ |
+| [docs/README.md](docs/README.md)                                         | Documentation index                               |
+| [docs/01_architecture.md](docs/01_architecture.md)                       | System architecture                               |
+| [docs/02_api_reference.md](docs/02_api_reference.md)                     | REST API reference                                |
+| [docs/03_build_and_configuration.md](docs/03_build_and_configuration.md) | CMake options, build types, configuration         |
+| [docs/04_matching_engine.md](docs/04_matching_engine.md)                 | Matching semantics in detail                      |
+| [docs/05_ml_module.md](docs/05_ml_module.md)                             | Feature extraction, predictors, anomaly detection |
+| [docs/06_data_formats.md](docs/06_data_formats.md)                       | LOBSTER format, exported CSV schemas              |
+| [docs/07_performance_guide.md](docs/07_performance_guide.md)             | Latency methodology, benchmarking                 |
+| [docs/08_testing_guide.md](docs/08_testing_guide.md)                     | Test suite structure and coverage                 |
+
+## Limitations and Simplifications
 
 | Area             | Simplification                                                                                                                                    |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -357,21 +269,9 @@ standard numeric `to_string`. The vendored third-party headers under
 | Real-time pacing | Replay pacing is a best-effort sleep, not a hard real-time guarantee                                                                              |
 | Static mount     | The server needs the absolute path to `frontend/dist`; `run_stack.sh` passes it                                                                   |
 
-## Testing and verification
+## Contributing
 
-| Area             | What is covered                                                                                          |
-| ---------------- | -------------------------------------------------------------------------------------------------------- |
-| Order book       | Add, cancel and modify; best bid/ask/mid/spread; imbalance; VWAP; market impact; snapshot depth          |
-| Matching         | LIMIT rest and cross, MARKET sweep, IOC remainder cancel, FOK accept and reject, price-time priority     |
-| Feed handler     | Synthetic generation counts, LOBSTER parse and replay                                                    |
-| Latency recorder | Mean, stddev, min, max, percentile correctness, and merge                                                |
-| Memory pool      | Raw allocate/deallocate, construct/destroy lifetime, exhaustion, and the non-trivial-destructor contract |
-| Ring buffer      | Push and pop, wrap-around, full and empty states                                                         |
-| ML               | Feature dimension, predictor output ranges, anomaly detector, and pipeline integration with the engine   |
-
-All 131 unit tests pass via CTest. The REST API and the full offline ML pipeline
-(export, train, evaluate, visualise) were exercised end to end, and the built
-frontend is served by the same C++ server that answers the API.
+Open a pull request.
 
 ## License
 
