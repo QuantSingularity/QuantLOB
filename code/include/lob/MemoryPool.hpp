@@ -108,7 +108,6 @@ public:
     static constexpr size_t capacity() noexcept { return Capacity; }
 
 private:
-    // FIX: aligned_storage_t is deprecated in C++23.
     struct alignas(T) StorageSlot {
         byte bytes[sizeof(T)];
     };

@@ -6,8 +6,6 @@ QuantSingularity Research Institute
 Reads snapshot CSVs and latency samples exported from the C++ engine and
 renders bid/ask depth charts, cumulative depth curves, and latency plots.
 
-FIX: load_latency used delimiter="," but the latency file has one value per
-     line with no delimiter. Fixed to use header-aware pd.read_csv.
 """
 
 from __future__ import annotations
@@ -38,11 +36,6 @@ def load_latency(path: Path) -> np.ndarray:
     """
     Load latency samples from a file written by Exporter::export_latency.
 
-    FIX: The original code called np.loadtxt(path, delimiter=",") but the
-    latency file format is one integer per line with a single header row
-    ("latency_ns").  Using delimiter="," on a single-column file with no
-    commas causes numpy to raise an error or return an empty array.
-    Fixed: use pandas with header=0 then convert to numpy.
     """
     df = pd.read_csv(path, header=0)
     col = df.columns[0]

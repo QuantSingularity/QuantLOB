@@ -12,14 +12,6 @@ LOBSTER message format (comma-separated, no header row):
   - size          : shares
   - price_int     : price * 10000 (integer)
   - direction     : 1=buy, -1=sell
-
-FIX: The original script had a sign error in price offset calculation.
-     For a BUY order (side=1):  price = mid - side * offset = mid - offset  ✓
-     For a SELL order (side=-1): price = mid - side * offset = mid + offset  ✓
-     This looked correct algebraically, BUT `offset` could be negative when
-     `rng.gauss(0, tick * 0.1)` produces a large negative value, causing asks
-     below the mid and bids above the mid (crossed book on entry).
-     Fixed by using abs() on the Gaussian noise component.
 """
 
 from __future__ import annotations
@@ -52,8 +44,6 @@ def generate(
             # New limit order
             side = 1 if rng.random() < 0.5 else -1
             levels = rng.randint(0, 4)
-            # FIX: use abs() to ensure offset is always positive, preventing
-            # asks below the mid or bids above it.
             offset = levels * tick + abs(rng.gauss(0, tick * 0.1))
             # side=1 (buy)  → price = mid - offset  (below mid)
             # side=-1 (sell) → price = mid + offset  (above mid)
