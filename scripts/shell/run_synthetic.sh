@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_synthetic.sh — Run a synthetic simulation and visualize results
+# run_synthetic.sh - Run a synthetic simulation and visualize results
 # Usage: ./scripts/shell/run_synthetic.sh [output_dir]
 set -euo pipefail
 
@@ -34,5 +34,5 @@ if command -v python3 &>/dev/null; then
         --out "${OUT}/orderbook.png" \
     && echo "    Chart: ${OUT}/orderbook.png"
 else
-    echo "    python3 not found — skipping visualization"
+    echo "    python3 not found - skipping visualization"
 fi

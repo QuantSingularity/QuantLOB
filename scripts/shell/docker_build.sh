@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# docker_build.sh — Build and optionally run the Docker image
+# docker_build.sh - Build and optionally run the Docker image
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

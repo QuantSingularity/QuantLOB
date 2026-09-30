@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    LOB_INFO("Main", "Starting QuantLOB — symbol: " + symbol);
+    LOB_INFO("Main", "Starting QuantLOB - symbol: " + symbol);
 
     // -----------------------------------------------------------------------
     // Run
@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
     auto t1 = chrono::high_resolution_clock::now();
 
     if (g_shutdown.load())
-        LOB_WARN("Main", "Shutdown signal received — results may be partial");
+        LOB_WARN("Main", "Shutdown signal received - results may be partial");
 
     // -----------------------------------------------------------------------
     // Report

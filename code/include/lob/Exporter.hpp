@@ -43,7 +43,7 @@ public:
     // Latency
     // ------------------------------------------------------------------
 
-    /// Export latency samples — one nanosecond value per line.
+    /// Export latency samples - one nanosecond value per line.
     /// Header: latency_ns
     static void export_latency(const LatencyRecorder&       rec,
                                const filesystem::path& path) {
@@ -89,7 +89,7 @@ public:
     }
 
     // ------------------------------------------------------------------
-    // Trade log  (streaming writes — keep file open across many calls)
+    // Trade log  (streaming writes - keep file open across many calls)
     // ------------------------------------------------------------------
 
     /// Write the trade log CSV header to an already-open stream.

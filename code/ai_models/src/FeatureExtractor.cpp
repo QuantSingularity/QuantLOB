@@ -82,7 +82,7 @@ FeatureVector FeatureExtractor::extract(const BookSnapshot& snap) const {
     }
 
     // -------------------------------------------------------------------
-    // Features 7-9: depth features — normalised to [-1, 1] / bounded
+    // Features 7-9: depth features - normalised to [-1, 1] / bounded
     //
     // Raw bid/ask depths can be in the thousands and cause SGD divergence
     // when used directly as features.  We normalise each by the total
@@ -117,7 +117,7 @@ FeatureVector FeatureExtractor::extract(const BookSnapshot& snap) const {
     }
 
     // -------------------------------------------------------------------
-    // Feature 12: signed trade flow — normalised by window size so it
+    // Feature 12: signed trade flow - normalised by window size so it
     // stays bounded regardless of order sizes.
     // -------------------------------------------------------------------
     {
@@ -133,13 +133,13 @@ FeatureVector FeatureExtractor::extract(const BookSnapshot& snap) const {
     }
 
     // -------------------------------------------------------------------
-    // Feature 13: trade intensity — fraction of window filled -> [0, 1]
+    // Feature 13: trade intensity - fraction of window filled -> [0, 1]
     // -------------------------------------------------------------------
     fv.data[13] = safe_div(static_cast<double>(trade_history_.size()),
                            static_cast<double>(trade_window_));
 
     // -------------------------------------------------------------------
-    // Feature 14: price momentum — log return over full window, clamped
+    // Feature 14: price momentum - log return over full window, clamped
     // -------------------------------------------------------------------
     if (mid_history_.size() >= 2) {
         double first = mid_history_.front();

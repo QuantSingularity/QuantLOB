@@ -78,7 +78,7 @@ def main():
 
     print(f"Evaluating on {len(wide)} snapshots\n")
 
-    # MidPricePredictor — evaluate on the exact features the trainer builds so
+    # MidPricePredictor - evaluate on the exact features the trainer builds so
     # the numbers reflect the real model, not a simplified two-feature subset.
     from train_mid_price import compute_features as mid_features
     from train_mid_price import load_timeseries

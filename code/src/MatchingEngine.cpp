@@ -140,12 +140,12 @@ void MatchingEngine::reset_all_books() noexcept {
 // asks, descending for bids).  Within each level orders are served FIFO.
 //
 // Design invariant maintained here:
-//   • apply_fill()       — updates filled_quantity / status AND level total_quantity.
-//   • Cross() itself    — removes the oid from order_ids (via list erase) and
+//   • apply_fill()       - updates filled_quantity / status AND level total_quantity.
+//   • Cross() itself    - removes the oid from order_ids (via list erase) and
 //                         removes the Order record from orders_ map after a
 //                         full fill so that find_order / order_count stay
 //                         consistent without a separate remove_fully_filled call.
-//   • Level erasure     — happens only after order_ids is confirmed empty.
+//   • Level erasure     - happens only after order_ids is confirmed empty.
 // ---------------------------------------------------------------------------
 
 vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
@@ -168,7 +168,7 @@ vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
                 const uint64_t passive_id = *oid_it;
                 auto           pit        = book.orders().find(passive_id);
 
-                // Stale reference guard — should not occur in normal operation.
+                // Stale reference guard - should not occur in normal operation.
                 if (pit == book.orders().end()) {
                     oid_it = order_ids.erase(oid_it);
                     continue;
@@ -196,7 +196,7 @@ vector<Trade> MatchingEngine::cross(Order& aggressor, OrderBook& book) {
                     oid_it = order_ids.erase(oid_it);
                     book.orders().erase(pit);
                 } else {
-                    // Passive partially filled — stays on book.
+                    // Passive partially filled - stays on book.
                     book.apply_fill(passive_id, fill_qty);
                     ++oid_it;
                 }
@@ -299,7 +299,7 @@ MatchResult MatchingEngine::match_market(Order& order, OrderBook& book) {
     result.trades   = cross(order, book);
     result.fully_filled = (order.remaining() == 0);
 
-    // Unfilled portion is silently discarded — market orders never rest.
+    // Unfilled portion is silently discarded - market orders never rest.
     if (!result.fully_filled)
         order.status = OrderStatus::PARTIAL;
 

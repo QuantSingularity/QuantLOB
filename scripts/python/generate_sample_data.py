@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-generate_sample_data.py — Generate a synthetic LOBSTER-format message CSV
+generate_sample_data.py - Generate a synthetic LOBSTER-format message CSV
 for testing the C++ FeedHandler without real LOBSTER data.
 
 LOBSTER message format (comma-separated, no header row):
@@ -64,7 +64,7 @@ def generate(
             )
 
         elif active:
-            # Visible execution (event type 4) — remove from active
+            # Visible execution (event type 4) - remove from active
             cid = rng.choice(list(active.keys()))
             info = active.pop(cid)
             rows.append(

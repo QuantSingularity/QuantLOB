@@ -85,7 +85,7 @@ def plot_order_book(df: pd.DataFrame, symbol: str, output: Path) -> None:
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     fig.suptitle(
-        f"Order Book Snapshot — {symbol}",
+        f"Order Book Snapshot - {symbol}",
         fontsize=14,
         fontweight="bold",
         color="#cdd6f4",
@@ -283,7 +283,7 @@ def plot_trades(df: pd.DataFrame, output: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="QuantLOB Visualization — plot order book, latency, and trades"
+        description="QuantLOB Visualization - plot order book, latency, and trades"
     )
     sub = parser.add_subparsers(dest="command")
 

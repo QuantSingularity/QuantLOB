@@ -61,7 +61,7 @@ public:
     /// Modify the total quantity of an existing active order.
     /// new_quantity must be strictly greater than filled_quantity.
     /// Quantity reductions preserve time-priority; increases lose priority
-    /// on most exchanges — callers should cancel+resubmit for increases if
+    /// on most exchanges - callers should cancel+resubmit for increases if
     /// strict exchange semantics are required.
     bool modify_order(uint64_t order_id, uint64_t new_quantity);
 

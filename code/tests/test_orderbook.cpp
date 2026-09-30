@@ -1,4 +1,4 @@
-// Catch2 v3: no CATCH_CONFIG_MAIN needed — link Catch2::Catch2WithMain
+// Catch2 v3: no CATCH_CONFIG_MAIN needed - link Catch2::Catch2WithMain
 #include <catch2/catch_all.hpp>
 
 #include "lob/FeedHandler.hpp"
@@ -70,7 +70,7 @@ TEST_CASE("Order: to_string helpers", "[order]") {
 }
 
 // ===========================================================================
-// OrderBook — basic operations
+// OrderBook - basic operations
 // ===========================================================================
 
 TEST_CASE("OrderBook: add and retrieve orders", "[orderbook]") {
@@ -206,7 +206,7 @@ TEST_CASE("OrderBook: level_count tracks correctly", "[orderbook]") {
 }
 
 // ===========================================================================
-// OrderBook — analytics
+// OrderBook - analytics
 // ===========================================================================
 
 TEST_CASE("OrderBook: relative_spread", "[orderbook][analytics]") {
@@ -303,7 +303,7 @@ TEST_CASE("OrderBook: estimate_market_impact zero qty nullopt", "[orderbook][ana
 }
 
 // ===========================================================================
-// MatchingEngine — core matching
+// MatchingEngine - core matching
 // ===========================================================================
 
 TEST_CASE("MatchingEngine: limit order rests on book", "[matching]") {

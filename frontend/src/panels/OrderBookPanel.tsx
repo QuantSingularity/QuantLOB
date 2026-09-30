@@ -269,7 +269,7 @@ export function OrderBookPanel({
     <div>
       <div className="panel-head">
         <div className="eyebrow">Live Engine</div>
-        <h1>Order Book — {book.symbol}</h1>
+        <h1>Order Book - {book.symbol}</h1>
         <p>
           A live price-time-priority book served by the C++ matching engine.
           Submit limit, market, IOC or FOK orders and watch the ladder, depth

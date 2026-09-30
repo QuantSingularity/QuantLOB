@@ -27,12 +27,12 @@ void FeedHandler::configure(const FeedConfig& cfg) {
 // LOBSTER CSV parser
 //
 // Expected column layout (no header row):
-//   [0] time        — seconds since midnight (float)
-//   [1] event_type  — 1=new, 2=partial-cancel, 3=delete, 4=exec, 5=hidden, 7=halt
-//   [2] order_id    — integer
-//   [3] size        — integer shares
-//   [4] price       — integer, scaled by 10000 (e.g. 1000000 = $100.00)
-//   [5] direction   — 1=buy, -1=sell
+//   [0] time        - seconds since midnight (float)
+//   [1] event_type  - 1=new, 2=partial-cancel, 3=delete, 4=exec, 5=hidden, 7=halt
+//   [2] order_id    - integer
+//   [3] size        - integer shares
+//   [4] price       - integer, scaled by 10000 (e.g. 1000000 = $100.00)
+//   [5] direction   - 1=buy, -1=sell
 // ---------------------------------------------------------------------------
 
 vector<LOBSTEREvent> FeedHandler::load_lobster_csv(
@@ -139,7 +139,7 @@ void FeedHandler::replay_lobster(const vector<LOBSTEREvent>& events,
                 break;
             }
             case 2:
-                // Partial cancel / size reduction — new size is ev.size.
+                // Partial cancel / size reduction - new size is ev.size.
                 engine_.modify_order(symbol, ev.order_id, ev.size);
                 break;
             case 3:
@@ -151,7 +151,7 @@ void FeedHandler::replay_lobster(const vector<LOBSTEREvent>& events,
                 engine_.cancel_order(symbol, ev.order_id);
                 break;
             case 5:
-                // Hidden execution — no visible LOB change; skip.
+                // Hidden execution - no visible LOB change; skip.
                 break;
             case 7:
                 LOB_WARN("FeedHandler",

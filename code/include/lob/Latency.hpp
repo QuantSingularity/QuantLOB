@@ -95,7 +95,7 @@ private:
 };
 
 /// RAII timer: records elapsed nanoseconds into a LatencyRecorder on
-/// destruction.  Designed for use on the hot path — overhead is a single
+/// destruction.  Designed for use on the hot path - overhead is a single
 /// clock read at construction and one at destruction.
 class ScopedTimer {
 public:

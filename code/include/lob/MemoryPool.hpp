@@ -78,7 +78,7 @@ public:
             if (top_.compare_exchange_weak(top, new_top,
                                            memory_order_acq_rel,
                                            memory_order_acquire)) {
-                // We won the CAS — now it is safe to write the slot index.
+                // We won the CAS - now it is safe to write the slot index.
                 free_stack_[top].store(idx, memory_order_release);
                 break;
             }
