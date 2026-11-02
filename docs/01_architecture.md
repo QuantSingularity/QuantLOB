@@ -29,16 +29,19 @@ QuantLOB/
 |-- README.md
 |-- LICENSE
 |-- code/
-|   |-- include/lob/            Public C++ headers
-|   |-- src/                    Implementation files
-|   |-- tests/                  Catch2 unit tests
-|   |-- benchmarks/             Google Benchmark suites
-|   |-- data/sample/            LOBSTER CSV data directory
-|   `-- ai_models/                     Machine learning module
-|       |-- include/lob/ai_models/     ML public headers
-|       |-- src/                ML implementation files
-|       |-- python/             Python training and inference scripts
-|       `-- tests/              ML unit tests
+|   |-- backend/                   C++ trading engine and REST server
+|   |   |-- include/lob/           Public C++ headers
+|   |   |-- src/                   Implementation files
+|   |   |-- server/                REST API server
+|   |   |-- third_party/           Vendored httplib and nlohmann/json
+|   |   |-- tests/                 Catch2 unit tests
+|   |   |-- benchmarks/            Google Benchmark suites
+|   |   `-- data/sample/           LOBSTER CSV data directory
+|   `-- ai_models/                 Machine learning module
+|       |-- include/lob/ai_models/ ML public headers
+|       |-- src/                   ML implementation files
+|       |-- python/                Python training and inference scripts
+|       `-- tests/                 ML unit tests
 |-- docs/                       This documentation tree
 |-- infrastructure/
 |   |-- cmake/                  Compiler warning and sanitizer helpers

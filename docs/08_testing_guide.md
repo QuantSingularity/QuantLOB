@@ -14,13 +14,13 @@
 
 ## Test Suite Structure
 
-All tests are in `code/tests/test_orderbook.cpp` and use Catch2 v3.
+All tests are in `code/backend/tests/test_orderbook.cpp` and use Catch2 v3.
 The binary links `Catch2::Catch2WithMain` so no manual `main()` is needed.
 
-| File                               | Purpose                                                       |
-| ---------------------------------- | ------------------------------------------------------------- |
-| `code/tests/test_orderbook.cpp`    | Core LOB engine tests (70+ cases)                             |
-| `code/ai_models/tests/test_ml.cpp` | ML module tests (feature extraction, model updates, pipeline) |
+| File                                    | Purpose                                                       |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `code/backend/tests/test_orderbook.cpp` | Core LOB engine tests (70+ cases)                             |
+| `code/ai_models/tests/test_ml.cpp`      | ML module tests (feature extraction, model updates, pipeline) |
 
 ---
 
@@ -251,24 +251,30 @@ cd build_asan && ctest --output-on-failure
 
 ## Continuous Integration
 
-The `.github/workflows/ci.yml` pipeline runs on every push and pull request.
+The `.github/workflows/cicd.yml` pipeline runs on every push to `main` or `develop`, every pull request to those branches, and on manual dispatch. A formatting job (`Code Quality Checks`) runs first and gates every other job.
 
 ### CI matrix
 
-| Job           | OS           | Compiler | Build type | Extra flags |
-| ------------- | ------------ | -------- | ---------- | ----------- |
-| gcc-release   | ubuntu-22.04 | GCC 12   | Release    | None        |
-| gcc-debug     | ubuntu-22.04 | GCC 12   | Debug      | None        |
-| clang-release | ubuntu-22.04 | Clang 14 | Release    | None        |
-| clang-asan    | ubuntu-22.04 | Clang 14 | Debug      | ASAN=ON     |
-| ubsan-check   | ubuntu-22.04 | Clang 14 | Debug      | UBSAN=ON    |
+| Job                                          | OS           | Compiler | Build type | Extra flags |
+| -------------------------------------------- | ------------ | -------- | ---------- | ----------- |
+| Backend Test & Build (GCC 12 Release)        | ubuntu-22.04 | GCC 12   | Release    | None        |
+| Backend Test & Build (GCC 12 Debug)          | ubuntu-22.04 | GCC 12   | Debug      | None        |
+| Backend Test & Build (Clang 14 Release)      | ubuntu-22.04 | Clang 14 | Release    | None        |
+| Backend Test & Build (Clang 14 Debug + ASan) | ubuntu-22.04 | Clang 14 | Debug      | ASAN=ON     |
+| Sanitizer Check (UBSan)                      | ubuntu-22.04 | Clang 14 | Debug      | UBSAN=ON    |
 
-### CI steps per job
+### CI steps per backend job
 
-| Step                 | Description                                    |
-| -------------------- | ---------------------------------------------- |
-| Install dependencies | apt-get: ninja-build, cmake, compiler packages |
-| Configure            | cmake with matrix-specific flags               |
-| Build                | cmake --build --parallel                       |
-| Test                 | ctest --output-on-failure --parallel 4         |
-| Smoke test           | ./quantlob --events 5000 --log-level WARN      |
+| Step                   | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| Install dependencies   | apt-get: ninja-build, cmake, compiler packages            |
+| Configure              | cmake with matrix-specific flags                          |
+| Build backend          | cmake --build --parallel                                  |
+| Run backend test suite | ctest --output-on-failure --parallel 4                    |
+| Smoke-test main binary | ./quantlob --events 5000 --log-level WARN                 |
+| Smoke-test REST server | start quantlob_server, call /api/health and /api/simulate |
+
+### Other CI jobs
+
+- **Docker Build** builds the CLI image and the full-stack image, smoke tests the CLI, checks that the bundled data directory is present, and starts the full-stack container to check `/api/health` and the served frontend.
+- **Frontend Test & Build** runs the Vitest suite with coverage, then type-checks and builds the web terminal with Vite.

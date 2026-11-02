@@ -1,6 +1,6 @@
 # QuantLOB
 
-![CI Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/QuantLOB/ci.yml?branch=main&label=CI&logo=github)
+![CI Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/QuantLOB/cicd.yml?branch=main&label=CI&logo=github)
 
 ## High-Performance Limit Order Book Simulator
 
@@ -24,29 +24,30 @@ QuantLOB is a limit order book simulator with a matching engine written from fir
 
 ## Overview
 
-QuantLOB is built as a portfolio piece for quantitative and low-latency engineering roles. The emphasis is on a correct, well-tested matching core and a clean architecture rather than on breadth of half-finished features, and every simplifying assumption is stated plainly in the Limitations section rather than hidden. All 131 unit tests pass via CTest (verified: 131 `TEST_CASE` macros in the source), and CI runs a genuine four-way build matrix (GCC and Clang, Release and Debug, with AddressSanitizer on the Clang Debug leg) plus a separate UndefinedBehaviorSanitizer job and a live smoke test that starts the REST server and calls its real endpoints.
+QuantLOB is built as a portfolio piece for quantitative and low-latency engineering roles. The emphasis is on a correct, well-tested matching core and a clean architecture rather than on breadth of half-finished features, and every simplifying assumption is stated plainly in the Limitations section rather than hidden. All 131 unit tests pass via CTest (verified: 131 `TEST_CASE` macros in the source), and CI runs a genuine four-way build matrix (GCC and Clang, Release and Debug, with AddressSanitizer on the Clang Debug leg) plus a separate UndefinedBehaviorSanitizer job, Docker image builds, a live smoke test that starts the REST server and calls its real endpoints, and a Vitest suite for the web terminal.
 
 ## Project Structure
 
 ```
 QuantLOB/
 ├── code/
-│   ├── include/lob/                # Core engine headers
-│   │   ├── Order.hpp               # Order, Trade, Side/OrderType/OrderStatus, as_string
-│   │   ├── OrderBook.hpp           # Price-time priority book, snapshot, metrics, VWAP
-│   │   ├── MatchingEngine.hpp      # LIMIT/MARKET/IOC/FOK matching, stats, callbacks
-│   │   ├── FeedHandler.hpp         # Synthetic and LOBSTER feeds
-│   │   ├── Latency.hpp             # Latency recorder and scoped timer
-│   │   ├── Exporter.hpp            # CSV and text exporters
-│   │   ├── Logger.hpp              # Thread-safe singleton logger
-│   │   ├── MemoryPool.hpp          # Lock-free fixed-capacity pool
-│   │   └── RingBuffer.hpp          # Single-producer/single-consumer ring buffer
-│   ├── src/                        # Engine implementation (static lib quantlob_core)
-│   ├── server/                     # REST API server (cpp-httplib + nlohmann/json)
-│   ├── third_party/                # Vendored httplib and nlohmann/json (left untouched)
-│   ├── tests/                      # Catch2 unit tests (core)
-│   ├── benchmarks/                 # Google Benchmark suite
-│   ├── data/sample/                # LOBSTER CSV directory (generated, not committed)
+│   ├── backend/                    # C++ trading engine and REST server
+│   │   ├── include/lob/            # Core engine headers
+│   │   │   ├── Order.hpp           # Order, Trade, Side/OrderType/OrderStatus, as_string
+│   │   │   ├── OrderBook.hpp       # Price-time priority book, snapshot, metrics, VWAP
+│   │   │   ├── MatchingEngine.hpp  # LIMIT/MARKET/IOC/FOK matching, stats, callbacks
+│   │   │   ├── FeedHandler.hpp     # Synthetic and LOBSTER feeds
+│   │   │   ├── Latency.hpp         # Latency recorder and scoped timer
+│   │   │   ├── Exporter.hpp        # CSV and text exporters
+│   │   │   ├── Logger.hpp          # Thread-safe singleton logger
+│   │   │   ├── MemoryPool.hpp      # Lock-free fixed-capacity pool
+│   │   │   └── RingBuffer.hpp      # Single-producer/single-consumer ring buffer
+│   │   ├── src/                    # Engine implementation (static lib quantlob_core)
+│   │   ├── server/                 # REST API server (cpp-httplib + nlohmann/json)
+│   │   ├── third_party/            # Vendored httplib and nlohmann/json (left untouched)
+│   │   ├── tests/                  # Catch2 unit tests (core)
+│   │   ├── benchmarks/             # Google Benchmark suite
+│   │   └── data/sample/            # LOBSTER CSV directory (generated, not committed)
 │   └── ai_models/                  # Machine learning module (static lib quantlob_ml_core)
 │       ├── include/lob/ai_models/  # ML public headers
 │       ├── src/                    # ML implementation
@@ -80,16 +81,16 @@ QuantLOB/
 
 ## Technology Stack
 
-| Area               | Technology                                                          |
-| :----------------- | :------------------------------------------------------------------ |
-| Engine             | C++20, CMake, Ninja                                                 |
-| REST server        | cpp-httplib, nlohmann/json (both vendored under `code/third_party`) |
-| Testing            | Catch2 (131 unit tests), Google Benchmark                           |
-| Sanitizers         | AddressSanitizer, UndefinedBehaviorSanitizer                        |
-| Offline ML tooling | Python, used for training weights and visualizing exported CSVs     |
-| Web frontend       | React, TypeScript, Vite, Recharts                                   |
-| Infrastructure     | Docker, Docker Compose                                              |
-| CI/CD              | GitHub Actions                                                      |
+| Area               | Technology                                                                       |
+| :----------------- | :------------------------------------------------------------------------------- |
+| Engine             | C++20, CMake, Ninja                                                              |
+| REST server        | cpp-httplib, nlohmann/json (both vendored under `code/backend/third_party`)      |
+| Testing            | Catch2 (131 unit tests), Google Benchmark; Vitest and Testing Library (frontend) |
+| Sanitizers         | AddressSanitizer, UndefinedBehaviorSanitizer                                     |
+| Offline ML tooling | Python, used for training weights and visualizing exported CSVs                  |
+| Web frontend       | React, TypeScript, Vite, Recharts                                                |
+| Infrastructure     | Docker, Docker Compose                                                           |
+| CI/CD              | GitHub Actions                                                                   |
 
 ## Architecture
 
@@ -185,8 +186,8 @@ QuantLOB runs on two feed types. The synthetic feed is a Poisson arrival process
 
 ```bash
 python3 scripts/python/generate_sample_data.py --events 10000
-# writes code/data/sample/messages.csv
-./build/quantlob --lobster code/data/sample/messages.csv --export-snapshot --out-dir out
+# writes code/backend/data/sample/messages.csv
+./build/quantlob --lobster code/backend/data/sample/messages.csv --export-snapshot --out-dir out
 ```
 
 ### Offline ML tools
@@ -218,7 +219,11 @@ The `/api/simulate` response carries the engine stats, a latency summary and his
 ## Testing
 
 ```bash
+# C++ engine and ML library
 cd build && ctest --output-on-failure --parallel 4
+
+# Frontend (from frontend)
+npm test
 ```
 
 | Area             | What is covered                                                                                      |
@@ -233,15 +238,31 @@ cd build && ctest --output-on-failure --parallel 4
 
 All 131 unit tests pass via CTest (Catch2). The REST API and the full offline ML pipeline (export, train, evaluate, visualise) were exercised end to end, and the built frontend is served by the same C++ server that answers the API. See `docs/08_testing_guide.md` for more.
 
+### Frontend tests
+
+The web terminal has its own Vitest suite of 93 tests across 5 files (`npm run test:coverage` adds a coverage report):
+
+| Test file                                  | Test count |
+| :----------------------------------------- | :--------- |
+| `src/ui.test.tsx` (formatters, components) | 40         |
+| `src/api.test.ts` (REST client)            | 13         |
+| `src/App.test.tsx` (status bar, tabs)      | 8          |
+| `src/panels/OrderBookPanel.test.tsx`       | 24         |
+| `src/panels/SimulationPanel.test.tsx`      | 8          |
+
+Three of the order ticket tests are marked as expected failures (`it.fails`) because they record a known defect: after an order is submitted, a generic "Order submitted" toast replaces the detailed result, so a rejected order looks successful. They fail the run as soon as the defect is fixed, which is the cue to turn them back into normal tests.
+
 ## CI/CD Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on push and pull request:
+GitHub Actions (`.github/workflows/cicd.yml`) runs five jobs on push to `main` or `develop`, on pull requests to those branches, and on manual dispatch:
 
-| Job             | What it does                                                                                                                                                                                                                                                                                         |
-| :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| build-and-test  | A 4-way matrix (GCC 12 and Clang 14, each Release and Debug, with AddressSanitizer enabled on the Clang Debug leg). Configures with CMake and Ninja, builds, runs the full CTest suite, smoke-tests the CLI binary, and starts the real REST server to smoke-test `/api/health` and `/api/simulate`. |
-| sanitizer-check | A separate Clang Debug build with UndefinedBehaviorSanitizer enabled, running the full CTest suite.                                                                                                                                                                                                  |
-| frontend        | Installs frontend dependencies, type-checks, and builds with Vite.                                                                                                                                                                                                                                   |
+| Job                   | Depends on          | What it does                                                                                                                                                                                                                                                                                         |
+| :-------------------- | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Code Quality Checks   | -                   | Formatter checks across the repository (Python and Prettier).                                                                                                                                                                                                                                        |
+| Backend Test & Build  | Code Quality Checks | A 4-way matrix (GCC 12 and Clang 14, each Release and Debug, with AddressSanitizer enabled on the Clang Debug leg). Configures with CMake and Ninja, builds, runs the full CTest suite, smoke-tests the CLI binary, and starts the real REST server to smoke-test `/api/health` and `/api/simulate`. |
+| Sanitizer Check       | Code Quality Checks | A separate Clang Debug build with UndefinedBehaviorSanitizer enabled, running the full CTest suite.                                                                                                                                                                                                  |
+| Docker Build          | Code Quality Checks | Builds the CLI image and the full-stack image, smoke tests the CLI, checks the bundled data directory, and starts the full-stack container to check `/api/health` and the served frontend.                                                                                                           |
+| Frontend Test & Build | Code Quality Checks | Installs dependencies, runs the Vitest suite with coverage (uploaded as an artifact), type-checks and builds with Vite, and uploads the bundle.                                                                                                                                                      |
 
 ## Documentation
 

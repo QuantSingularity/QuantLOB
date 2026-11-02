@@ -84,14 +84,15 @@ dmypy.json
 # =========================
 frontend/node_modules/
 frontend/dist/
+frontend/coverage/
 *.tsbuildinfo
 
 # =========================
 # Data Samples
 # =========================
-code/data/sample/*.csv
-code/data/sample/*.txt
-!code/data/sample/.gitkeep
+code/backend/data/sample/*.csv
+code/backend/data/sample/*.txt
+!code/backend/data/sample/.gitkeep
 
 # Output Exports
 out/

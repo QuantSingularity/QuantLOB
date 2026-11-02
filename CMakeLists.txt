@@ -85,14 +85,14 @@ endmacro()
 # Core library
 # ---------------------------------------------------------------------------
 add_library(quantlob_core STATIC
-  code/src/OrderBook.cpp
-  code/src/MatchingEngine.cpp
-  code/src/FeedHandler.cpp
+  code/backend/src/OrderBook.cpp
+  code/backend/src/MatchingEngine.cpp
+  code/backend/src/FeedHandler.cpp
 )
 
 target_include_directories(quantlob_core
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/code/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/code/backend/include>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -118,7 +118,7 @@ if(QUANTLOB_BUILD_AI_MODELS)
   target_include_directories(quantlob_ml_core
     PUBLIC
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/code/ai_models/include>
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/code/include>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/code/backend/include>
       $<INSTALL_INTERFACE:include>
   )
 
@@ -135,7 +135,7 @@ endif()
 # Main executable
 # ---------------------------------------------------------------------------
 if(QUANTLOB_BUILD_MAIN)
-  add_executable(quantlob_main code/src/main.cpp)
+  add_executable(quantlob_main code/backend/src/main.cpp)
   target_link_libraries(quantlob_main PRIVATE quantlob_core)
   if(QUANTLOB_BUILD_AI_MODELS)
     target_link_libraries(quantlob_main PRIVATE quantlob_ml_core)
@@ -153,11 +153,11 @@ endif()
 if(QUANTLOB_BUILD_SERVER AND QUANTLOB_BUILD_AI_MODELS)
   add_library(quantlob_thirdparty INTERFACE)
   target_include_directories(quantlob_thirdparty INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/code/third_party/httplib
-    ${CMAKE_CURRENT_SOURCE_DIR}/code/third_party)
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/backend/third_party/httplib
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/backend/third_party)
 
-  add_executable(quantlob_server code/server/server_main.cpp)
-  target_include_directories(quantlob_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/code/server)
+  add_executable(quantlob_server code/backend/server/server_main.cpp)
+  target_include_directories(quantlob_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/code/backend/server)
   target_link_libraries(quantlob_server
     PRIVATE quantlob_core quantlob_ml_core quantlob_thirdparty Threads::Threads)
   # Optimise but stay portable: no -march=native here so the server binary runs
@@ -176,7 +176,7 @@ endif()
 if(QUANTLOB_BUILD_TESTS)
   enable_testing()
 
-  set(TEST_SOURCES code/tests/test_orderbook.cpp)
+  set(TEST_SOURCES code/backend/tests/test_orderbook.cpp)
   if(QUANTLOB_BUILD_AI_MODELS)
     list(APPEND TEST_SOURCES code/ai_models/tests/test_ml.cpp)
   endif()
@@ -194,7 +194,7 @@ endif()
 # Benchmarks
 # ---------------------------------------------------------------------------
 if(QUANTLOB_BUILD_BENCHMARKS)
-  add_executable(quantlob_bench code/benchmarks/bench_matching.cpp)
+  add_executable(quantlob_bench code/backend/benchmarks/bench_matching.cpp)
   target_link_libraries(quantlob_bench PRIVATE quantlob_core benchmark::benchmark)
   target_compile_options(quantlob_bench PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-O3 -march=native>
@@ -223,7 +223,7 @@ if(QUANTLOB_BUILD_AI_MODELS)
   )
 endif()
 
-install(DIRECTORY code/include/
+install(DIRECTORY code/backend/include/
   DESTINATION include
 )
 

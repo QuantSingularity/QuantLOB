@@ -1,33 +1,118 @@
+# ==========================================================================
+# QuantLOB CI
+#
+# Jobs
+#   1. code_quality        - Python (autoflake, black) and Prettier formatting gate
+#   2. backend_test_build  - C++ engine and ML library: build, CTest and smoke
+#                            tests on GCC and Clang (Release, Debug, ASan)
+#   3. sanitizer_check     - Undefined-behaviour sanitizer build and CTest
+#   4. docker_build        - CLI and full-stack Docker images and smoke tests
+#   5. frontend_test_build - Frontend: Vitest with coverage, then type-checked
+#                            production build
+#
+# Every job waits for code_quality, so formatting problems fail the run before
+# any compiler or package manager is started. The ML library (code/ai_models)
+# is built and tested by the same CMake project, so its tests run in job 2.
+# ==========================================================================
 name: CI
 
 on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  # ============================================================
+  # Job 1 -- Code Quality Checks (Python & Prettier)
+  # ============================================================
+  code_quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Pinned so a new Black release cannot change formatting under our feet.
+      - name: Install Python formatters
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install autoflake black==25.11.0
+
+      # Check-only: nothing is rewritten. Covers the helper scripts and the
+      # offline ML training scripts.
+      - name: Check Python Code Quality
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== Running autoflake check ==="
+          autoflake --remove-all-unused-imports --remove-unused-variables --recursive --check .
+          echo "=== Running black check ==="
+          black . --check
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # The Solidity plugin lets the same glob below also cover .sol files.
+      - name: Install Global Formatters
+        run: npm install -g prettier prettier-plugin-solidity
+
+      # One Prettier pass over the whole repository (TS/TSX, JSON, HTML, CSS,
+      # Markdown, Solidity and YAML, including this workflow).
+      - name: Run Global Prettier Check
+        shell: bash
+        run: |
+          set -euo pipefail
+          NODE_GLOBAL=$(npm root -g)
+          echo "=== Running Prettier check ==="
+          prettier --plugin="$NODE_GLOBAL/prettier-plugin-solidity/dist/index.js" \
+            --check "**/*.{js,jsx,ts,tsx,json,html,css,md,sol,yml,yaml}"
+
+  # ============================================================
+  # Job 2 -- Backend Test & Build (CMake + CTest + smoke tests)
+  # ============================================================
+  backend_test_build:
+    name: Backend Test & Build (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    needs: code_quality
+    timeout-minutes: 45
+
     strategy:
+      # One failing compiler should not hide the results of the others.
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - label: GCC 12 Release
+            os: ubuntu-22.04
             compiler: gcc
             cc: gcc-12
             cxx: g++-12
             build_type: Release
-          - os: ubuntu-22.04
+          - label: GCC 12 Debug
+            os: ubuntu-22.04
             compiler: gcc
             cc: gcc-12
             cxx: g++-12
             build_type: Debug
-          - os: ubuntu-22.04
+          - label: Clang 14 Release
+            os: ubuntu-22.04
             compiler: clang
             cc: clang-14
             cxx: clang++-14
             build_type: Release
-          - os: ubuntu-22.04
+          - label: Clang 14 Debug + ASan
+            os: ubuntu-22.04
             compiler: clang
             cc: clang-14
             cxx: clang++-14
@@ -35,16 +120,18 @@ jobs:
             extra_flags: >-
               -DQUANTLOB_ENABLE_ASAN=ON
 
-    runs-on: ${{ matrix.os }}
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ninja-build cmake ${{ matrix.cc }} ${{ matrix.cxx }}
 
+      # Builds every target: the engine library (code/backend), the ML library
+      # (code/ai_models), the CLI, the REST server, the tests and the benchmarks.
+      # Catch2 and Google Benchmark are fetched by CMake.
       - name: Configure
         env:
           CC: ${{ matrix.cc }}
@@ -58,15 +145,19 @@ jobs:
                 -DQUANTLOB_BUILD_MAIN=ON \
                 ${{ matrix.extra_flags }}
 
-      - name: Build
+      - name: Build backend
         run: cmake --build build --parallel
 
-      - name: Test
+      # CTest runs both the engine tests (code/backend/tests) and the ML tests
+      # (code/ai_models/tests), discovered from the same Catch2 binary.
+      - name: Run backend test suite
         run: cd build && ctest --output-on-failure --parallel 4
 
       - name: Smoke-test main binary
         run: ./build/quantlob --events 5000 --log-level WARN
 
+      # Starts the REST server with no web assets, waits for /api/health, then
+      # runs a small simulation through the API.
       - name: Smoke-test REST server
         run: |
           ./build/quantlob_server 8123 /tmp/no_web &
@@ -83,12 +174,23 @@ jobs:
             -d '{"events":20000,"snap_interval":2000}' >/dev/null
           kill "$SVR"
 
-  sanitizer-check:
+  # ============================================================
+  # Job 3 -- Sanitizer Check (UBSan build + CTest)
+  # ============================================================
+  sanitizer_check:
+    name: Sanitizer Check (UBSan)
     runs-on: ubuntu-22.04
+    needs: code_quality
+    timeout-minutes: 45
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Install
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
         run: sudo apt-get install -y ninja-build cmake clang-14 clang++-14
+
+      # Benchmarks are skipped: they add build time and are not run under UBSan.
       - name: UBSan build + test
         env:
           CC: clang-14
@@ -102,15 +204,146 @@ jobs:
           cmake --build build_ubsan --parallel
           cd build_ubsan && ctest --output-on-failure
 
-  frontend:
+  # ====================================================================
+  # Job 4 -- Docker Build (CLI image + full-stack image + smoke tests)
+  # ====================================================================
+  docker_build:
+    name: Docker Build
     runs-on: ubuntu-22.04
+    needs: code_quality
+    timeout-minutes: 45
+
+    env:
+      CLI_IMAGE: quantlob
+      FULLSTACK_IMAGE: quantlob-fullstack
+      CONTAINER_NAME: quantlob-ci
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Buildx enables the GitHub Actions layer cache used by the build steps.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # push: false + load: true builds the image locally for the smoke tests
+      # without publishing it.
+      - name: Build CLI image
+        uses: docker/build-push-action@v6
         with:
-          node-version: 20
-      - name: Install and type-check + build
-        working-directory: frontend
+          context: .
+          file: infrastructure/docker/Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.CLI_IMAGE }}:ci
+          cache-from: type=gha,scope=cli
+          cache-to: type=gha,mode=max,scope=cli
+
+      - name: Smoke test CLI image
+        run: docker run --rm "${CLI_IMAGE}:ci" --events 5000 --log-level WARN
+
+      # The image copies code/backend/data into /app/data; this fails if that
+      # path ever stops existing or is moved again.
+      - name: Check the bundled data directory
+        run: docker run --rm --entrypoint ls "${CLI_IMAGE}:ci" /app/data | grep -qx sample
+
+      - name: Build full-stack image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.fullstack
+          push: false
+          load: true
+          tags: ${{ env.FULLSTACK_IMAGE }}:ci
+          cache-from: type=gha,scope=fullstack
+          cache-to: type=gha,mode=max,scope=fullstack
+
+      # Starts the real container, polls /api/health for up to 60 seconds, then
+      # checks that the built frontend is served from the same port.
+      - name: Smoke test full-stack image
         run: |
-          npm install --no-audit --no-fund
-          npm run build
+          set -euo pipefail
+          docker run -d --name "${CONTAINER_NAME}" -p 8080:8080 "${FULLSTACK_IMAGE}:ci"
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/api/health -o health.json; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != true ]; then
+            echo "Server did not become ready in time." >&2
+            docker logs "${CONTAINER_NAME}"
+            exit 1
+          fi
+          cat health.json
+          echo
+          curl -fsS http://127.0.0.1:8080/ | grep -q 'id="root"'
+
+      # Only runs when an earlier step failed, to make the failure diagnosable.
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs "${CONTAINER_NAME}" || true
+
+      # Always clean up, even when the smoke test fails.
+      - name: Stop container
+        if: always()
+        run: docker rm -f "${CONTAINER_NAME}" || true
+
+  # ======================================================================
+  # Job 5 -- Frontend Test & Build (Vitest + coverage + production build)
+  # ======================================================================
+  frontend_test_build:
+    name: Frontend Test & Build
+    runs-on: ubuntu-latest
+    needs: code_quality
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci installs exactly what package-lock.json pins.
+      - name: Install dependencies
+        run: npm ci
+
+      # Vitest suite (jsdom): formatting helpers, the REST client, the shared UI
+      # components, the app shell, and the order book and simulation panels.
+      # Runs before the build so test failures show up first.
+      - name: Run frontend test suite
+        run: npm run test:coverage
+
+      # Uploaded even when tests fail, so coverage is available for debugging.
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-report
+          path: frontend/coverage/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # The build type-checks the whole of src/ first (tsc --noEmit), test files
+      # included, then bundles the app with Vite.
+      - name: Build frontend
+        run: npm run build
+
+      # Keeps the production bundle for a week so it can be inspected.
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7

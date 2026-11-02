@@ -46,7 +46,7 @@ static void print_usage(const char* prog) {
         << "Examples:\n"
         << "  " << prog << "\n"
         << "  " << prog << " --symbol TSLA --events 1000000 --out-dir /tmp/lob\n"
-        << "  " << prog << " --lobster code/data/sample/messages.csv"
+        << "  " << prog << " --lobster code/backend/data/sample/messages.csv"
                            " --export-snapshot --out-dir out\n"
         << "  " << prog << " --events 200000 --export-latency"
                            " --export-trades --out-dir out\n";

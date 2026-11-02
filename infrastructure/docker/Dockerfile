@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /src
 
-# Copy source tree (tests and benchmarks live under code/ and are disabled here)
+# Copy source tree (tests and benchmarks live under code/backend/ and are disabled here)
 COPY CMakeLists.txt .
 COPY code/         code/
 
@@ -44,7 +44,7 @@ USER quantlob
 WORKDIR /app
 
 COPY --from=builder /src/build/quantlob /app/quantlob
-COPY --chown=quantlob:quantlob code/data/ /app/data/
+COPY --chown=quantlob:quantlob code/backend/data/ /app/data/
 
 RUN mkdir -p /app/out
 

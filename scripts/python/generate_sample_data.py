@@ -89,7 +89,9 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--mid", type=float, default=100.0)
     p.add_argument("--tick", type=float, default=0.01)
-    p.add_argument("--out", type=Path, default=Path("code/data/sample/messages.csv"))
+    p.add_argument(
+        "--out", type=Path, default=Path("code/backend/data/sample/messages.csv")
+    )
     args = p.parse_args()
     generate(args.events, args.seed, args.mid, args.tick, args.out)
 
